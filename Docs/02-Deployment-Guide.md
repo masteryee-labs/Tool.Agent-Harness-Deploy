@@ -6,9 +6,9 @@
 
 Tell any AI coding assistant:
 
-> 幫恁部署：https://github.com/<you>/agent-harness-deploy
+> 幫恁部署：https://github.com/masteryee-labs/Tool.Agent-Harness-Deploy
 
-(English equivalent: "deploy: https://github.com/<you>/agent-harness-deploy")
+(English equivalent: "deploy: https://github.com/masteryee-labs/Tool.Agent-Harness-Deploy")
 
 That's it. The AI does the rest.
 
@@ -18,8 +18,8 @@ When the AI receives that instruction, it MUST:
 
 1. **Clone or enter the repo.**
    ```
-   git clone https://github.com/<you>/agent-harness-deploy
-   cd agent-harness-deploy
+   git clone https://github.com/masteryee-labs/Tool.Agent-Harness-Deploy
+   cd Tool.Agent-Harness-Deploy
    ```
    (If already cloned, just `cd` into it.)
 
@@ -75,19 +75,19 @@ If you want to deploy without an AI driving it:
 
 **Windows (PowerShell):**
 ```powershell
-cd C:\path\to\agent-harness-deploy
+cd C:\path\to\Tool.Agent-Harness-Deploy
 powershell -ExecutionPolicy Bypass -File scripts\deploy.ps1
 ```
 
 **Linux / macOS (bash):**
 ```bash
-cd /path/to/agent-harness-deploy
+cd /path/to/Tool.Agent-Harness-Deploy
 bash scripts/deploy.sh
 ```
 
 **Direct (any OS):**
 ```bash
-cd /path/to/agent-harness-deploy
+cd /path/to/Tool.Agent-Harness-Deploy
 python scripts/distill.py
 ```
 

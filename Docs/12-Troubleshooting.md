@@ -110,7 +110,7 @@ py scripts/distill.py
 
 You're running from the wrong directory. The scripts expect to run from the repo root:
 ```bash
-cd /path/to/agent-harness-deploy
+cd /path/to/Tool.Agent-Harness-Deploy
 python scripts/distill.py
 ```
 

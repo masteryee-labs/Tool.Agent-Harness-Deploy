@@ -61,7 +61,7 @@ which one is current. Agent Harness Deploy fixes this: **one source (`distill/ca
 ## Repo map
 
 ```
-agent-harness-deploy/
+Tool.Agent-Harness-Deploy/
 ├── AGENTS.md                  # Entry file for AGENTS.md-aware tools
 ├── README.md                  # English (default)
 ├── README_zh-TW.md            # 繁體中文

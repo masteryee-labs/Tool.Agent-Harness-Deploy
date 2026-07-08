@@ -12,7 +12,7 @@
 
 You give any AI coding assistant this repo's GitHub URL and say:
 
-> **deploy: https://github.com/\<you\>/agent-harness-deploy**
+> **deploy: https://github.com/masteryee-labs/Tool.Agent-Harness-Deploy**
 
 The AI clones the repo, runs the deployer, and it:
 
@@ -47,7 +47,7 @@ Unlike simple rules-sync tools that only copy text between config files, this de
 Tell any AI coding assistant:
 
 ```
-deploy: https://github.com/<you>/agent-harness-deploy
+deploy: https://github.com/masteryee-labs/Tool.Agent-Harness-Deploy
 ```
 
 The AI reads `AGENTS.md`, runs `python scripts/distill.py`, reports what it deployed. Done.
@@ -108,7 +108,7 @@ Adding a tool is a registry entry + a 6-line adapter. See
 ## Repo layout
 
 ```
-agent-harness-deploy/
+Tool.Agent-Harness-Deploy/
 ├── AGENTS.md                  # Entry file for AGENTS.md-aware tools
 ├── CLAUDE.md                  # Entry file for CLAUDE.md-aware tools
 ├── README.md / README_zh-TW.md / README_zh-CN.md

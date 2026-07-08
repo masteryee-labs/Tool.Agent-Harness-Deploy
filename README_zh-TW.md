@@ -12,8 +12,8 @@
 
 你把這個 repo 的 GitHub 連結貼給任何 AI 程式助手，說：
 
-> **幫我部屬：https://github.com/\<you\>/agent-harness-deploy**
-> （英文：deploy: https://github.com/\<you\>/agent-harness-deploy）
+> **幫我部屬：https://github.com/masteryee-labs/Tool.Agent-Harness-Deploy**
+> （英文：deploy: https://github.com/masteryee-labs/Tool.Agent-Harness-Deploy）
 
 AI 會 clone 這個 repo、執行部署器，部署器會：
 
@@ -49,7 +49,7 @@ AI 會 clone 這個 repo、執行部署器，部署器會：
 跟任何 AI 程式助手說：
 
 ```
-幫我部屬：https://github.com/<you>/agent-harness-deploy
+幫我部屬：https://github.com/masteryee-labs/Tool.Agent-Harness-Deploy
 ```
 
 AI 會讀 `AGENTS.md`（或 `CLAUDE.md`）、執行 `python scripts/distill.py`、回報同步了什麼。完成。
@@ -109,7 +109,7 @@ Desktop · OpenCode · OpenClaw · Hermes · ZCode · Kimi Code · AGY CLI · Co
 ## Repo 結構
 
 ```
-agent-harness-deploy/
+Tool.Agent-Harness-Deploy/
 ├── AGENTS.md                  # 給讀 AGENTS.md 的工具的入口檔
 ├── CLAUDE.md                  # 給讀 CLAUDE.md 的工具的入口檔
 ├── README.md / README_zh-TW.md / README_zh-CN.md
