@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Cavemars Context Distiller — manual deploy (Linux/macOS).
+# Tool.Agent-Harness-Deploy — manual deploy (Linux/macOS).
 # Detects installed AI tools, syncs the canonical harness into each, verifies.
 # Equivalent to: python scripts/distill.py
 set -euo pipefail
@@ -7,7 +7,7 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
-echo "== Cavemars Context Distiller — Manual Deploy (bash) =="
+echo "== Tool.Agent-Harness-Deploy — Manual Deploy (bash) =="
 
 if ! command -v python3 >/dev/null 2>&1; then
     if ! command -v python >/dev/null 2>&1; then

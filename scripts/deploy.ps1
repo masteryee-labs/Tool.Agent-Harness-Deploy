@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Cavemars Context Distiller — manual deploy (Windows PowerShell).
+  Tool.Agent-Harness-Deploy — manual deploy (Windows PowerShell).
 .DESCRIPTION
   Detects installed AI tools, syncs the canonical harness into each, verifies.
   Equivalent to: python scripts/distill.py
@@ -16,7 +16,7 @@ $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $repoRoot
 
-Write-Host "== Cavemars Context Distiller — Manual Deploy (PowerShell) ==" -ForegroundColor Cyan
+Write-Host "== Tool.Agent-Harness-Deploy — Manual Deploy (PowerShell) ==" -ForegroundColor Cyan
 
 if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
     Write-Host "ERROR: python not found on PATH. Install Python 3.9+." -ForegroundColor Red
