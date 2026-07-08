@@ -1,0 +1,72 @@
+# Caveman Protocol — Token Compression
+
+> Source: JuliusBrussee/caveman + cheeseonamonkey/Lean-Caveman. Goal: ~65% token reduction without losing precision.
+
+## The problem
+
+Agent transcripts burn tokens on filler that carries no decision-relevant information. 40 words to say what 8 words say. Filler eats context window that should be spent on evidence (file contents, errors, prior state). When context fills with filler, the model loses track of the actual problem.
+
+## The deeper point
+
+Token efficiency isn't just about cost. It's about **attention**. A model with 200K context that's 65% filler effectively has 70K of useful context. A model with 100K context that's 90% signal has more *usable* attention. Caveman mode is a context-window multiplier.
+
+## Why ~65%
+
+Filler (hedging, restating, transitions, pleasantries) accounts for roughly 65% of tokens in verbose mode. Cutting it leaves the signal. The exact number varies by task; the direction is consistent.
+
+## The rule
+
+**Strip filler. Keep signal.**
+- Cut: adverbs, hedging, pleasantries, restating the question, motivational filler, transitions.
+- Keep verbatim: code, paths, line numbers, errors, identifiers, commands, URLs, exact values.
+
+## Examples
+
+| Verbose (bad) | Caveman (good) |
+|---------------|----------------|
+| "So I looked into the issue and it looks like the problem is probably in the config file at line 42 where the path seems to be wrong." | `config.json:42` — path wrong. Fix: `/correct/value`. |
+| "I'm happy to report that I've successfully completed the deployment and everything appears to be working!" | Deploy done. `verify.py` PASS. 3 tools synced. |
+
+## What caveman is NOT
+
+- NOT broken grammar. Sentences stay parseable.
+- NOT dropping evidence. Paths/lines/errors always verbatim.
+- NOT for user-facing prose needing warmth (apologies, bad news, teaching).
+- NOT for code comments or docs meant for humans.
+
+## When to relax
+
+- User asks for explanation/teaching.
+- Writing Docs/README (full prose).
+- Bad news or clarifying questions (clarity > brevity).
+
+## Compression levels
+
+| Level | Cuts | Example |
+|-------|------|---------|
+| **light** | Filler, hedging, pleasantries | `Sync done. 2 issues: src/sync.py:42 path, :88 backup.` |
+| **full** | light + articles, aux verbs, restating question | `sync.py:42` hardcoded path (P1). `:88` missing backup (P0). |
+| **ultra** | full + abbreviate, drop pronouns, telegraphic | `sync.py:42 hardcode P1. :88 no backup P0. fix: registry + shutil.copy2.` |
+| **wenyan** | Classical Chinese register | `sync.py:42 路徑硬編 P1。:88 無備份 P0。修：registry + shutil.copy2。` |
+
+### When to use each
+
+| Channel | Default | Escalate to |
+|---------|---------|-------------|
+| Worker → Commander | full | ultra (context >80%) |
+| Commander → user | light | full (user asks) |
+| Memory writes | full | ultra (near 3KB cap) |
+| Docs / README | full prose | — |
+| Bad news / questions | full prose | — |
+
+### Ultra mode
+
+- Abbreviate: `configuration`→`config`, `verification`→`verify`, `implementation`→`impl`
+- Drop pronouns: "I found the bug" → `found bug`
+- Telegraphic: SVO only, no connectives
+- **Still keep verbatim**: code, paths, lines, errors, commands, URLs, values
+- **Never ultra for**: bad news, apologies, teaching, user summaries
+
+### Wenyan mode
+
+Classical Chinese (文言文) for Chinese sessions with max compression needed. Same keep-verbatim rules. Only when session language is Chinese AND context constrained.

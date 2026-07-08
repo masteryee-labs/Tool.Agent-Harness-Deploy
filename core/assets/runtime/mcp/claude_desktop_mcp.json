@@ -1,0 +1,15 @@
+{
+  "_Agent Harness Deploy_note": "Auto-generated MCP config for Claude Desktop by Agent Harness Deploy. Claude Desktop uses claude_desktop_config.json with mcpServers. No hooks support (Desktop has no hook system).",
+  "mcpServers": {
+    "chroma-hybrid-search": {
+      "command": "python",
+      "args": ["distill/skills/chroma-hybrid-search/scripts/search.py", "--serve"],
+      "_disabled": true
+    },
+    "codebase-memory-mcp": {
+      "command": "codebase-memory-mcp",
+      "args": [],
+      "_disabled": true
+    }
+  }
+}

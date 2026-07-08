@@ -1,0 +1,10 @@
+{
+  "_Agent Harness Deploy_note": "Auto-generated MCP config for OpenClaw by Agent Harness Deploy. OpenClaw reads MCP from ~/.openclaw/openclaw.json (global, strict schema). Use 'openclaw config set' to add servers.",
+  "mcpServers": {
+    "chroma-hybrid-search": {
+      "command": "python",
+      "args": ["distill/skills/chroma-hybrid-search/scripts/search.py", "--serve"],
+      "_disabled": true
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "_agent_harness_deploy_note": "Auto-generated for OpenClaw by Agent Harness Deploy. OpenClaw uses strict JSON5 schema at ~/.openclaw/openclaw.json. This template is for reference ??merge manually or use openclaw config set. Hooks are registered in the agents.defaults.automation section.",
+  "agents": {
+    "defaults": {
+      "automation": {
+        "_agent_harness_deploy_note": "OpenClaw hooks/automation. See OpenClaw docs for schema. Agent Harness Deploy hook scripts at .openclaw/hooks/ can be referenced here."
+      }
+    }
+  }
+}

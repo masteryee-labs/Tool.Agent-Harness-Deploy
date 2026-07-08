@@ -1,0 +1,13 @@
+hooks:
+  - id: cavemars-pre-tool-use
+    event: tool.before
+    actions:
+      - command: "python .opencode/hooks/pre_tool_use.py"
+  - id: cavemars-post-tool-use
+    event: tool.after
+    actions:
+      - command: "python .opencode/hooks/post_tool_use.py"
+  - id: cavemars-stop
+    event: session.end
+    actions:
+      - command: "python .opencode/hooks/stop.py"

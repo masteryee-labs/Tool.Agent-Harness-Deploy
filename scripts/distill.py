@@ -1,0 +1,99 @@
+#!/usr/bin/env python3
+"""distill.py — The main entry point. Detect — Sync — Verify.
+
+This is what runs when a user tells an AI "幫我部屬：[this repo's URL]" and the AI
+follows AGENTS.md. It chains the three pipeline steps and prints a final report.
+
+Usage:
+    python scripts/distill.py
+    python scripts/distill.py --global        # also sync global entry files
+    python scripts/distill.py --tools X,Y     # sync only listed tools
+    python scripts/distill.py --dry-run       # detect + report, no writes
+"""
+from __future__ import annotations
+
+import argparse
+import sys
+from datetime import datetime
+from pathlib import Path
+
+# Windows consoles often default to a legacy codepage (cp950/cp1252) that can't encode
+# box-drawing/arrow characters. Reconfigure stdout/stderr to UTF-8 so the pipeline doesn't
+# crash on a UnicodeEncodeError before it even starts.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+
+from scripts.detect import detect_all  # noqa: E402
+from scripts.sync import sync_all  # noqa: E402
+from scripts.verify import verify_all  # noqa: E402
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description="Agent Harness Deploy — full pipeline.")
+    ap.add_argument("--global", dest="global_too", action="store_true",
+                    help="also sync global entry files")
+    ap.add_argument("--tools", default=None, help="comma-separated tool ids to sync")
+    ap.add_argument("--dry-run", action="store_true", help="detect only, no writes")
+    ap.add_argument("--project-root", default=".")
+    args = ap.parse_args()
+
+    print("┌───────────────────────────────────────────────────┐")
+    print("│  Agent Harness Deploy — Deploy Pipeline           │")
+    print("└───────────────────────────────────────────────────┘")
+    print()
+
+    # Step 1: Detect
+    print("→ Step 1/3: Detecting installed AI tools...")
+    det = detect_all(args.project_root)
+    detected = [r for r in det if r["detected"]]
+    print(f"  Found {len(detected)}/{len(det)} tools:")
+    for r in detected:
+        print(f"    [+] {r['name']} ({r['tool_id']})")
+    if not detected:
+        print("  No AI tools detected. Nothing to sync. Exiting.")
+        print("  (If you have a tool installed but it wasn't detected, see Docs/12-Troubleshooting.md)")
+        return 0
+    print()
+
+    if args.dry_run:
+        print("Dry-run mode: stopping after detection (no writes).")
+        return 0
+
+    # Step 2: Sync
+    print("→ Step 2/3: Generating canonical body & syncing to detected tools...")
+    only = args.tools.split(",") if args.tools else None
+    rc = sync_all(project_root=args.project_root, global_too=args.global_too, only_tools=only)
+    print()
+
+    # Step 3: Verify
+    print("→ Step 3/3: Verifying written files (read-back)...")
+    v = verify_all(args.project_root)
+    for r in v["checks"]:
+        mark = "PASS" if r["ok"] else "FAIL"
+        print(f"    [{mark}] {r['name']}: {r['target']}")
+    print()
+
+    # Final report
+    print("┌─────────────────────────────────────────────────────────┐")
+    print("│  Deploy Complete                                        │")
+    print("└─────────────────────────────────────────────────────────┘")
+    print(f"  Timestamp:    {datetime.now().isoformat(timespec='seconds')}")
+    print(f"  Tools synced: {len(detected)}")
+    print(f"  Verification: {'PASS' if v['pass'] else 'FAIL'}")
+    print()
+    if v["pass"]:
+        print("  Open any of your AI tools now — they share the same Agent Harness Deploy harness.")
+        print("  Rules: distill/canon/   |   Orchestrator: distill/orchestrator/   |   Skills: distill/skills/")
+    else:
+        print("  Some verification checks FAILED. Review the output above and re-run.")
+        print("  See Docs/12-Troubleshooting.md for common issues.")
+        return 1
+    return rc
+
+
+if __name__ == "__main__":
+    sys.exit(main())

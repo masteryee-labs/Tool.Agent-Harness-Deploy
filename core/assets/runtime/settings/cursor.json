@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "hooks": {
+    "preToolUse": [
+      { "command": "python .cursor/hooks/pre_tool_use.py" }
+    ],
+    "postToolUse": [
+      { "command": "python .cursor/hooks/post_tool_use.py" }
+    ],
+    "stop": [
+      { "command": "python .cursor/hooks/stop.py" }
+    ]
+  }
+}

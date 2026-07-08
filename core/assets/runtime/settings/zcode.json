@@ -1,0 +1,19 @@
+{
+  "_agent_harness_deploy_note": "Auto-generated for ZCode by Agent Harness Deploy. ZCode uses .zcode/config.json with mcp.servers key. ZCode has UI-based safety confirmation (no file-based hooks). Skills at ~/.zcode/skills/<name>/SKILL.md.",
+  "mcp": {
+    "servers": {
+      "chroma-hybrid-search": {
+        "command": "python",
+        "args": ["distill/skills/chroma-hybrid-search/scripts/search.py", "--serve"],
+        "enable": false,
+        "_enable_instructions": "Set enable to true after installing requirements"
+      },
+      "codebase-memory-mcp": {
+        "command": "codebase-memory-mcp",
+        "args": [],
+        "enable": false,
+        "_enable_instructions": "Install from https://github.com/DeusData/codebase-memory-mcp"
+      }
+    }
+  }
+}

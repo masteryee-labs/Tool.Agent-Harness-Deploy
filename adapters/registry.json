@@ -1,0 +1,485 @@
+{
+  "$schema": "https://agent-harness-deploy.dev/registry.v1.json",
+  "version": "1",
+  "description": "Tool registry for Agent Harness Deploy. Each entry tells detect.py how to check if a tool is installed and sync.py where/how to write its config. Paths use env expansion: ${HOME}, ${APPDATA}, ${LOCALAPPDATA}, ${XDG_CONFIG_HOME}, ${USERPROFILE}. Detection principle: prefer command checks (binary on PATH = tool installed). Avoid project-dir fallbacks — config dirs can be created by the deployer itself or by other tools, causing false positives. Tools without a CLI (cursor, claude_desktop) use install-location dir/file checks as the only available signal.",
+  "tools": [
+    {
+      "id": "claude_code",
+      "name": "Claude Code",
+      "detect": {
+        "method": "any",
+        "checks": [
+          {
+            "type": "command",
+            "value": "claude --version"
+          }
+        ]
+      },
+      "config": {
+        "project_entry": ".claude/CLAUDE.md",
+        "global_entry": "${HOME}/.claude/CLAUDE.md",
+        "skills_dir": ".claude/skills/",
+        "commands_dir": ".claude/commands/",
+        "agents_dir": ".claude/agents/",
+        "format": "markdown",
+        "entry_filename": "CLAUDE.md",
+        "notes": "Claude Code reads .claude/CLAUDE.md (project) and ~/.claude/CLAUDE.md (global). Skills live in .claude/skills/<name>/SKILL.md."
+      },
+      "runtime": {
+        "enabled": true,
+        "settings_file": ".claude/settings.json",
+        "settings_format": "json",
+        "settings_template": "claude_code.json",
+        "hooks_dir": ".claude/hooks/",
+        "mcp_file": ".mcp.json",
+        "mcp_format": "json",
+        "mcp_template": "claude_code_mcp.json",
+        "hook_command": "python {hook_path}"
+      }
+    },
+    {
+      "id": "antigravity",
+      "name": "Antigravity (AGY)",
+      "detect": {
+        "method": "any",
+        "checks": [
+          {
+            "type": "command",
+            "value": "agy --version"
+          },
+          {
+            "type": "command",
+            "value": "antigravity --version"
+          }
+        ]
+      },
+      "config": {
+        "project_entry": "AGENTS.md",
+        "global_entry": "${HOME}/.gemini/AGENTS.md",
+        "skills_dir": ".agents/skills/",
+        "agents_dir": ".agents/",
+        "format": "markdown",
+        "entry_filename": "AGENTS.md",
+        "notes": "Antigravity reads AGENTS.md at repo root. Global config in ~/.gemini/. Some forks use .agents/ dir."
+      },
+      "runtime": {
+        "enabled": true,
+        "settings_file": ".agents/config.json",
+        "settings_format": "json",
+        "settings_template": "antigravity.json",
+        "hooks_dir": ".agents/hooks/",
+        "mcp_file": ".agents/mcp.json",
+        "mcp_format": "json",
+        "mcp_template": "claude_code_mcp.json",
+        "hook_command": "python {hook_path}"
+      }
+    },
+    {
+      "id": "codex",
+      "name": "Codex / Codex CLI",
+      "detect": {
+        "method": "any",
+        "checks": [
+          {
+            "type": "command",
+            "value": "codex --version"
+          }
+        ]
+      },
+      "config": {
+        "project_entry": ".codex/instructions.md",
+        "global_entry": "${HOME}/.codex/instructions.md",
+        "skills_dir": ".codex/skills/",
+        "agents_dir": ".codex/agents/",
+        "format": "markdown",
+        "entry_filename": "instructions.md",
+        "notes": "Codex CLI reads .codex/instructions.md. Agents defined as TOML in .codex/agents/."
+      },
+      "runtime": {
+        "enabled": true,
+        "settings_file": ".codex/config.toml",
+        "settings_format": "toml",
+        "settings_template": "codex.toml",
+        "hooks_dir": ".codex/hooks/",
+        "mcp_file": ".codex/config.toml",
+        "mcp_format": "toml_inline",
+        "mcp_template": null,
+        "hook_command": "python {hook_path}"
+      }
+    },
+    {
+      "id": "devin",
+      "name": "Devin / Devin CLI",
+      "detect": {
+        "method": "any",
+        "checks": [
+          {
+            "type": "command",
+            "value": "devin --version"
+          }
+        ]
+      },
+      "config": {
+        "project_entry": ".devin/AGENTS.md",
+        "global_entry": "${HOME}/.config/devin/AGENTS.md",
+        "skills_dir": ".devin/skills/",
+        "agents_dir": ".devin/agents/",
+        "hooks_dir": ".devin/hooks/",
+        "config_file": ".devin/config.json",
+        "format": "markdown",
+        "entry_filename": "AGENTS.md",
+        "notes": "Devin reads .devin/AGENTS.md. Hooks in .devin/hooks/. Config in .devin/config.json."
+      },
+      "runtime": {
+        "enabled": true,
+        "settings_file": ".devin/config.json",
+        "settings_format": "json",
+        "settings_template": "devin.json",
+        "hooks_dir": ".devin/hooks/",
+        "mcp_file": ".devin/mcp.json",
+        "mcp_format": "json",
+        "mcp_template": "claude_code_mcp.json",
+        "hook_command": "python {hook_path}"
+      }
+    },
+    {
+      "id": "cursor",
+      "name": "Cursor",
+      "detect": {
+        "method": "any",
+        "checks": [
+          {
+            "type": "dir",
+            "value": ".cursor",
+            "scope": "project"
+          },
+          {
+            "type": "dir",
+            "value": "${APPDATA}/Cursor"
+          }
+        ]
+      },
+      "config": {
+        "project_entry": ".cursor/rules/agent-harness-deploy.mdc",
+        "global_entry": "${HOME}/.cursor/rules/agent-harness-deploy.mdc",
+        "rules_dir": ".cursor/rules/",
+        "format": "mdc",
+        "entry_filename": "agent-harness-deploy.mdc",
+        "notes": "Cursor uses .cursor/rules/*.mdc with frontmatter (description, globs, alwaysApply). Body is markdown."
+      },
+      "runtime": {
+        "enabled": true,
+        "settings_file": ".cursor/hooks.json",
+        "settings_format": "json",
+        "settings_template": "cursor.json",
+        "hooks_dir": ".cursor/hooks/",
+        "mcp_file": ".cursor/mcp.json",
+        "mcp_format": "json",
+        "mcp_template": "cursor_mcp.json",
+        "hook_command": "python {hook_path}"
+      }
+    },
+    {
+      "id": "claude_desktop",
+      "name": "Claude Desktop",
+      "detect": {
+        "method": "any",
+        "checks": [
+          {
+            "type": "dir",
+            "value": "${APPDATA}/Claude"
+          },
+          {
+            "type": "file",
+            "value": "${APPDATA}/Claude/claude_desktop_config.json"
+          }
+        ]
+      },
+      "config": {
+        "project_entry": null,
+        "global_entry": "${APPDATA}/Claude/claude_desktop_config.json",
+        "format": "json",
+        "entry_filename": "claude_desktop_config.json",
+        "notes": "Claude Desktop uses a single JSON config (MCP servers, settings). No project-level rules file. Deployer injects a memory/rules pointer into the config, not the full canon."
+      },
+      "runtime": {
+        "enabled": true,
+        "settings_file": null,
+        "settings_format": null,
+        "settings_template": null,
+        "hooks_dir": null,
+        "mcp_file": "/Claude/claude_desktop_config.json",
+        "mcp_format": "json",
+        "mcp_template": "claude_desktop_mcp.json",
+        "hook_command": null,
+        "notes": "Claude Desktop has no hooks system. Only MCP config is deployed."
+      }
+    },
+    {
+      "id": "opencode",
+      "name": "OpenCode",
+      "detect": {
+        "method": "any",
+        "checks": [
+          {
+            "type": "command",
+            "value": "opencode --version"
+          }
+        ]
+      },
+      "config": {
+        "project_entry": ".opencode/AGENTS.md",
+        "global_entry": "${HOME}/.config/opencode/AGENTS.md",
+        "skills_dir": ".opencode/skills/",
+        "format": "markdown",
+        "entry_filename": "AGENTS.md",
+        "notes": "OpenCode (open-source Claude Code fork) reads .opencode/AGENTS.md. Similar layout to Claude Code."
+      },
+      "runtime": {
+        "enabled": true,
+        "settings_file": ".opencode/hook/hooks.yaml",
+        "settings_format": "yaml",
+        "settings_template": "opencode.yaml",
+        "hooks_dir": ".opencode/hooks/",
+        "mcp_file": "opencode.json",
+        "mcp_format": "json",
+        "mcp_template": "opencode_mcp.json",
+        "hook_command": "python {hook_path}"
+      }
+    },
+    {
+      "id": "openclaw",
+      "name": "OpenClaw",
+      "detect": {
+        "method": "any",
+        "checks": [
+          {
+            "type": "command",
+            "value": "openclaw --version"
+          }
+        ]
+      },
+      "config": {
+        "project_entry": ".openclaw/AGENTS.md",
+        "global_entry": "${HOME}/.config/openclaw/AGENTS.md",
+        "skills_dir": ".openclaw/skills/",
+        "format": "markdown",
+        "entry_filename": "AGENTS.md",
+        "notes": "OpenClaw (local-first Claude Code variant). Reads .openclaw/AGENTS.md."
+      },
+      "runtime": {
+        "enabled": true,
+        "settings_file": null,
+        "settings_format": null,
+        "settings_template": null,
+        "hooks_dir": ".openclaw/hooks/",
+        "mcp_file": null,
+        "mcp_format": null,
+        "mcp_template": null,
+        "hook_command": "python {hook_path}",
+        "notes": "OpenClaw uses strict JSON5 schema at ~/.openclaw/openclaw.json. Hooks deployed to project .openclaw/hooks/. Settings must be merged manually (strict schema)."
+      }
+    },
+    {
+      "id": "hermes",
+      "name": "Hermes",
+      "detect": {
+        "method": "any",
+        "checks": [
+          {
+            "type": "command",
+            "value": "hermes --version"
+          }
+        ]
+      },
+      "config": {
+        "project_entry": ".hermes/AGENTS.md",
+        "global_entry": "${HOME}/.config/hermes/AGENTS.md",
+        "skills_dir": ".hermes/skills/",
+        "agents_dir": ".hermes/agents/",
+        "format": "markdown",
+        "entry_filename": "AGENTS.md",
+        "notes": "Hermes reads .hermes/AGENTS.md. Adjust if the tool uses a different filename in your install."
+      },
+      "runtime": {
+        "enabled": true,
+        "settings_file": ".hermes/config.yaml",
+        "settings_format": "yaml",
+        "settings_template": "hermes.yaml",
+        "hooks_dir": ".hermes/hooks/",
+        "mcp_file": ".hermes/mcp.json",
+        "mcp_format": "json",
+        "mcp_template": "hermes_mcp.json",
+        "hook_command": "python {hook_path}"
+      }
+    },
+    {
+      "id": "zcode",
+      "name": "ZCode",
+      "detect": {
+        "method": "any",
+        "checks": [
+          {
+            "type": "command",
+            "value": "zcode --version"
+          }
+        ]
+      },
+      "config": {
+        "project_entry": ".zcode/AGENTS.md",
+        "global_entry": "${HOME}/.config/zcode/AGENTS.md",
+        "skills_dir": ".zcode/skills/",
+        "agents_dir": ".zcode/agents/",
+        "format": "markdown",
+        "entry_filename": "AGENTS.md",
+        "notes": "ZCode reads .zcode/AGENTS.md. Adjust per your vendor's docs if different."
+      },
+      "runtime": {
+        "enabled": true,
+        "settings_file": ".zcode/config.json",
+        "settings_format": "json",
+        "settings_template": "zcode.json",
+        "hooks_dir": null,
+        "mcp_file": ".zcode/config.json",
+        "mcp_format": "json",
+        "mcp_template": "zcode.json",
+        "hook_command": null,
+        "notes": "ZCode has UI-based safety confirmation (no file-based hooks). MCP in .zcode/config.json with mcp.servers key."
+      }
+    },
+    {
+      "id": "kimi_code",
+      "name": "Kimi Code",
+      "detect": {
+        "method": "any",
+        "checks": [
+          {
+            "type": "command",
+            "value": "kimi-code --version"
+          }
+        ]
+      },
+      "config": {
+        "project_entry": ".kimi-code/AGENTS.md",
+        "global_entry": "${HOME}/.config/kimi-code/AGENTS.md",
+        "skills_dir": ".kimi-code/skills/",
+        "agents_dir": ".kimi-code/agents/",
+        "format": "markdown",
+        "entry_filename": "AGENTS.md",
+        "notes": "Kimi Code (Moonshot). Reads .kimi-code/AGENTS.md. Confirm path with your install."
+      },
+      "runtime": {
+        "enabled": true,
+        "settings_file": ".kimi-code/config.toml",
+        "settings_format": "toml",
+        "settings_template": "kimi_code.toml",
+        "hooks_dir": ".kimi-code/hooks/",
+        "mcp_file": ".kimi-code/config.toml",
+        "mcp_format": "toml_inline",
+        "mcp_template": null,
+        "hook_command": "python {hook_path}"
+      }
+    },
+    {
+      "id": "agy_cli",
+      "name": "AGY CLI",
+      "detect": {
+        "method": "any",
+        "checks": [
+          {
+            "type": "command",
+            "value": "agy --version"
+          }
+        ]
+      },
+      "config": {
+        "project_entry": "AGENTS.md",
+        "global_entry": "${HOME}/.gemini/AGENTS.md",
+        "format": "markdown",
+        "entry_filename": "AGENTS.md",
+        "notes": "AGY CLI is the command-line interface of Antigravity. Shares the same AGENTS.md entry. Listed separately so detection reports the CLI distinctly; sync writes to the same file as antigravity (deduped)."
+      },
+      "runtime": {
+        "enabled": true,
+        "settings_file": ".agents/config.json",
+        "settings_format": "json",
+        "settings_template": "antigravity.json",
+        "hooks_dir": ".agents/hooks/",
+        "mcp_file": ".agents/mcp.json",
+        "mcp_format": "json",
+        "mcp_template": "claude_code_mcp.json",
+        "hook_command": "python {hook_path}"
+      }
+    },
+    {
+      "id": "codex_cli",
+      "name": "Codex CLI",
+      "detect": {
+        "method": "any",
+        "checks": [
+          {
+            "type": "command",
+            "value": "codex --version"
+          }
+        ]
+      },
+      "config": {
+        "project_entry": ".codex/instructions.md",
+        "global_entry": "${HOME}/.codex/instructions.md",
+        "format": "markdown",
+        "entry_filename": "instructions.md",
+        "notes": "Codex CLI shares the .codex/ layout with the Codex tool. Deduped in sync."
+      },
+      "runtime": {
+        "enabled": true,
+        "settings_file": ".codex/config.toml",
+        "settings_format": "toml",
+        "settings_template": "codex.toml",
+        "hooks_dir": ".codex/hooks/",
+        "mcp_file": ".codex/config.toml",
+        "mcp_format": "toml_inline",
+        "mcp_template": null,
+        "hook_command": "python {hook_path}"
+      }
+    },
+    {
+      "id": "devin_cli",
+      "name": "Devin CLI",
+      "detect": {
+        "method": "any",
+        "checks": [
+          {
+            "type": "command",
+            "value": "devin --version"
+          }
+        ]
+      },
+      "config": {
+        "project_entry": ".devin/AGENTS.md",
+        "global_entry": "${HOME}/.config/devin/AGENTS.md",
+        "format": "markdown",
+        "entry_filename": "AGENTS.md",
+        "notes": "Devin CLI shares .devin/ with the Devin tool. Deduped in sync."
+      },
+      "runtime": {
+        "enabled": true,
+        "settings_file": ".devin/config.json",
+        "settings_format": "json",
+        "settings_template": "devin.json",
+        "hooks_dir": ".devin/hooks/",
+        "mcp_file": ".devin/mcp.json",
+        "mcp_format": "json",
+        "mcp_template": "claude_code_mcp.json",
+        "hook_command": "python {hook_path}"
+      }
+    }
+  ],
+  "sync_policy": {
+    "backup_before_overwrite": true,
+    "backup_suffix": ".bak",
+    "dedupe_by_entry_path": true,
+    "skip_undetected": true,
+    "canon_source": "distill/canon/",
+    "entry_generator": "scripts/sync.py"
+  }
+}
