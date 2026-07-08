@@ -71,6 +71,32 @@ python scripts/distill.py
 
 詳見 [`Docs/02-Deployment-Guide.md`](Docs/02-Deployment-Guide.md) §Manual deploy。
 
+## 跨平台支援
+
+本專案可在 **Windows、macOS、Linux** 上運行。
+
+| 平台 | 需求 | 部署指令 |
+|------|------|---------|
+| Windows | Python 3.9+ | `powershell -ExecutionPolicy Bypass -File scripts\deploy.ps1` |
+| macOS | Python 3.9+ | `bash scripts/deploy.sh` |
+| Linux | Python 3.9+ | `bash scripts/deploy.sh` |
+| 任何系統 | Python 3.9+ | `python scripts/distill.py` |
+
+### 跨平台運作原理
+
+- 所有 Python 腳本使用 `pathlib`（不寫死 `\` 或 `/` 分隔符）。
+- `adapters/registry.json` 中的工具路徑使用環境變數展開：`${HOME}`、`${APPDATA}`、`${LOCALAPPDATA}`、`~`。
+- 在 macOS/Linux 上，Windows 專屬環境變數（`${APPDATA}`、`${LOCALAPPDATA}`、`${USERPROFILE}`）自動 fallback 到 XDG 風格路徑（`~/.config`、`~/.local/share`、`~`）。
+- `deploy.ps1` 給 Windows；`deploy.sh` 給 macOS/Linux。兩者都呼叫同一個 `python scripts/distill.py`。
+
+### 平台專屬工具
+
+| 工具 | Windows | macOS | Linux | 說明 |
+|------|---------|-------|-------|------|
+| Claude Desktop | ✓ | — | — | Windows 專屬應用；macOS/Linux 上偵測會跳過 |
+| Cursor | ✓ | ✓ | ✓ | Windows 偵測 `${APPDATA}/Cursor`；macOS 偵測 `~/Library/Application Support/Cursor` |
+| 其他所有工具 | ✓ | ✓ | ✓ | 透過 PATH 上的 CLI 指令偵測 |
+
 ## 工作環境裡有什麼——5 大技術支柱
 
 部署器同步的共通規則集建立在 2026 工作環境工程的 5 大支柱上：

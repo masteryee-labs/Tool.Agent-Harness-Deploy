@@ -69,6 +69,32 @@ python scripts/distill.py
 
 See [`Docs/02-Deployment-Guide.md`](Docs/02-Deployment-Guide.md) §Manual deploy.
 
+## Cross-platform support
+
+This project works on **Windows, macOS, and Linux**.
+
+| Platform | Requirements | Deploy command |
+|----------|-------------|----------------|
+| Windows | Python 3.9+ | `powershell -ExecutionPolicy Bypass -File scripts\deploy.ps1` |
+| macOS | Python 3.9+ | `bash scripts/deploy.sh` |
+| Linux | Python 3.9+ | `bash scripts/deploy.sh` |
+| Any OS | Python 3.9+ | `python scripts/distill.py` |
+
+### How cross-platform works
+
+- All Python scripts use `pathlib` (no hardcoded `\` or `/` separators).
+- Tool paths in `adapters/registry.json` use env expansion: `${HOME}`, `${APPDATA}`, `${LOCALAPPDATA}`, `~`.
+- On macOS/Linux, Windows-only env vars (`${APPDATA}`, `${LOCALAPPDATA}`, `${USERPROFILE}`) automatically fall back to XDG-style paths (`~/.config`, `~/.local/share`, `~`).
+- `deploy.ps1` is for Windows; `deploy.sh` is for macOS/Linux. Both call the same `python scripts/distill.py`.
+
+### Platform-specific tools
+
+| Tool | Windows | macOS | Linux | Note |
+|------|---------|-------|-------|------|
+| Claude Desktop | ✓ | — | — | Windows-only app; detection skips on macOS/Linux |
+| Cursor | ✓ | ✓ | ✓ | Detects `${APPDATA}/Cursor` (Win) or `~/Library/Application Support/Cursor` (macOS) |
+| All other tools | ✓ | ✓ | ✓ | Detected via CLI command on PATH |
+
 ## What's in the harness — 5 technical pillars
 
 The deployer syncs a canonical rule set built on 5 pillars of agent harness engineering:

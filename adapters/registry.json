@@ -156,6 +156,10 @@
           {
             "type": "dir",
             "value": "${APPDATA}/Cursor"
+          },
+          {
+            "type": "dir",
+            "value": "${HOME}/Library/Application Support/Cursor"
           }
         ]
       },
@@ -208,7 +212,7 @@
         "settings_format": null,
         "settings_template": null,
         "hooks_dir": null,
-        "mcp_file": "/Claude/claude_desktop_config.json",
+        "mcp_file": "${APPDATA}/Claude/claude_desktop_config.json",
         "mcp_format": "json",
         "mcp_template": "claude_desktop_mcp.json",
         "hook_command": null,
@@ -241,7 +245,7 @@
         "settings_format": "yaml",
         "settings_template": "opencode.yaml",
         "hooks_dir": ".opencode/hooks/",
-        "mcp_file": "opencode.json",
+        "mcp_file": ".opencode/opencode.json",
         "mcp_format": "json",
         "mcp_template": "opencode_mcp.json",
         "hook_command": "python {hook_path}"

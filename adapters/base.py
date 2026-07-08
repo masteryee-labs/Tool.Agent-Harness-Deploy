@@ -10,6 +10,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -36,9 +37,26 @@ ASSET_SOURCES = {
 
 
 def expand(path: str) -> str:
-    """Expand env vars (${HOME}, ${APPDATA}, ...) and ~ in a path string."""
+    """Expand env vars (${HOME}, ${APPDATA}, ...) and ~ in a path string.
+
+    Cross-platform fallbacks for Windows-only env vars on Unix:
+    - ${APPDATA} → ${HOME}/.config (XDG-style) on macOS/Linux
+    - ${LOCALAPPDATA} → ${HOME}/.local/share on macOS/Linux
+    - ${USERPROFILE} → ${HOME} on macOS/Linux
+    This prevents paths like ${APPDATA}/Claude becoming /Claude (root) on Unix.
+    """
     if path is None:
         return None
+    # Platform-specific env var fallbacks (Windows vars → Unix equivalents)
+    if sys.platform != "win32":
+        fallbacks = {
+            "APPDATA": os.path.join(os.path.expanduser("~"), ".config"),
+            "LOCALAPPDATA": os.path.join(os.path.expanduser("~"), ".local", "share"),
+            "USERPROFILE": os.path.expanduser("~"),
+        }
+        for var, val in fallbacks.items():
+            if var not in os.environ:
+                os.environ[var] = val
     # ${VAR} style
     for key, val in os.environ.items():
         path = path.replace(f"${{{key}}}", val)
