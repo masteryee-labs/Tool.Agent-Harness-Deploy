@@ -51,7 +51,19 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
-ROOT = Path(__file__).resolve().parent.parent
+try:
+    import ahd_session
+except ImportError:  # pragma: no cover
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "core" / "assets" / "runtime" / "hooks"))
+    import ahd_session
+
+
+def _get_repo_root() -> Path:
+    """Find the main repo root. Prefer git toplevel, then walk up for .git/.agent."""
+    return ahd_session.get_repo_root()
+
+
+ROOT = _get_repo_root()
 WORKTREE_DIR = ROOT / ".worktrees"
 WORKTREE_STATE = WORKTREE_DIR / ".worktree_state.json"
 
@@ -73,16 +85,43 @@ def _save_state(state: dict):
     WORKTREE_STATE.write_text(json.dumps(state, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
-def cmd_create(worker_id: str, base: str = "HEAD") -> int:
+def _update_session_state_worktrees(session_id: str, worktree_id: str, add: bool = True) -> None:
+    """Keep session_state.worktrees in sync with the worktree_state registry."""
+    if not session_id:
+        return
+    sid = ahd_session.slugify_session_id(session_id)
+    state_path = ahd_session.get_session_state_path(sid, ROOT)
+    # Only update if the session has already been initialized (session_manager init).
+    if not state_path.exists():
+        return
+    try:
+        state = ahd_session.read_session_state(sid, ROOT)
+        worktrees = list(state.get("worktrees", []))
+        if add:
+            if worktree_id not in worktrees:
+                worktrees.append(worktree_id)
+        else:
+            worktrees = [w for w in worktrees if w != worktree_id]
+        ahd_session.update_session_state(sid, {"worktrees": worktrees}, ROOT)
+    except Exception:
+        pass
+
+
+def cmd_create(worker_id: str, base: str = "HEAD", session_id: str = "") -> int:
     """Create a worktree for a worker on a new branch."""
     WORKTREE_DIR.mkdir(parents=True, exist_ok=True)
-    target = WORKTREE_DIR / worker_id
+    if session_id:
+        prefix = f"wt-{session_id[:8]}-"
+    else:
+        prefix = ""
+    prefixed_id = f"{prefix}{worker_id}"
+    target = WORKTREE_DIR / prefixed_id
 
     if target.exists():
         print(f"  [!] Worktree already exists: {target}")
         return 1
 
-    branch_name = f"Agent Harness Deploy/{worker_id}"
+    branch_name = f"agent-harness-deploy/{prefixed_id}"
 
     # Create branch and worktree
     rc, out, err = _git("worktree", "add", "-b", branch_name, str(target), base)
@@ -92,15 +131,17 @@ def cmd_create(worker_id: str, base: str = "HEAD") -> int:
 
     # Record state
     state = _load_state()
-    state["worktrees"][worker_id] = {
+    state["worktrees"][prefixed_id] = {
         "path": str(target),
         "branch": branch_name,
         "base": base,
         "status": "active",
+        "session_id": session_id,
     }
     _save_state(state)
+    _update_session_state_worktrees(session_id, prefixed_id, add=True)
 
-    print(f"  [+] Created worktree for {worker_id}")
+    print(f"  [+] Created worktree for {prefixed_id}")
     print(f"      Path:   {target}")
     print(f"      Branch: {branch_name}")
     print(f"      Base:   {base}")
@@ -167,10 +208,12 @@ def cmd_merge(worker_id: str) -> int:
     _git("branch", "-D", branch)
 
     # Update state
+    session_id = info.get("session_id", "")
     del state["worktrees"][worker_id]
     _save_state(state)
+    _update_session_state_worktrees(session_id, worker_id, add=False)
 
-    print(f"  [+] Merged {worker_id} ({branch} ??{current_branch})")
+    print(f"  [+] Merged {worker_id} ({branch} -> {current_branch})")
     print(f"      Worktree removed.")
     return 0
 
@@ -197,8 +240,10 @@ def cmd_remove(worker_id: str) -> int:
     _git("branch", "-D", branch)
 
     # Update state
+    session_id = info.get("session_id", "")
     del state["worktrees"][worker_id]
     _save_state(state)
+    _update_session_state_worktrees(session_id, worker_id, add=False)
 
     print(f"  [-] Removed worktree for {worker_id} (changes discarded)")
     return 0
@@ -227,6 +272,7 @@ def main() -> int:
     p_create = sub.add_parser("create", help="Create a worktree for a worker.")
     p_create.add_argument("worker_id", help="Unique worker identifier (e.g. builder-a)")
     p_create.add_argument("--base", default="HEAD", help="Base branch/commit (default: HEAD)")
+    p_create.add_argument("--session", default="", help="Session ID prefix to avoid conflicts (default: none)")
 
     sub.add_parser("list", help="List all active worktrees.")
 
@@ -241,7 +287,7 @@ def main() -> int:
     args = ap.parse_args()
 
     if args.command == "create":
-        return cmd_create(args.worker_id, args.base)
+        return cmd_create(args.worker_id, args.base, args.session)
     elif args.command == "list":
         return cmd_list()
     elif args.command == "merge":

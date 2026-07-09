@@ -24,12 +24,19 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
+try:
+    from filelock import FileLock
+except Exception:
+    FileLock = None
+
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from scripts.detect import detect_all  # noqa: E402
 from scripts.sync import sync_all  # noqa: E402
 from scripts.verify import verify_all  # noqa: E402
+
+_DEPLOY_LOCK = ROOT / ".agent" / ".agent_harness_deploy.lock"
 
 
 def main() -> int:
@@ -63,36 +70,53 @@ def main() -> int:
         print("Dry-run mode: stopping after detection (no writes).")
         return 0
 
-    # Step 2: Sync
+    # Step 2: Sync (serialized against other distill/sync runs)
     print("→ Step 2/3: Generating canonical body & syncing to detected tools...")
     only = args.tools.split(",") if args.tools else None
-    rc = sync_all(project_root=args.project_root, global_too=args.global_too, only_tools=only)
-    print()
+    deploy_lock = None
+    if FileLock:
+        _DEPLOY_LOCK.parent.mkdir(parents=True, exist_ok=True)
+        deploy_lock = FileLock(str(_DEPLOY_LOCK))
+        try:
+            deploy_lock.acquire(timeout=30)
+        except Timeout:
+            print("[!] Could not acquire deploy lock; another deploy may be running.")
+            return 1
 
-    # Step 3: Verify
-    print("→ Step 3/3: Verifying written files (read-back)...")
-    v = verify_all(args.project_root)
-    for r in v["checks"]:
-        mark = "PASS" if r["ok"] else "FAIL"
-        print(f"    [{mark}] {r['name']}: {r['target']}")
-    print()
+    try:
+        rc = sync_all(project_root=args.project_root, global_too=args.global_too, only_tools=only, lock=False)
+        print()
 
-    # Final report
-    print("┌─────────────────────────────────────────────────────────┐")
-    print("│  Deploy Complete                                        │")
-    print("└─────────────────────────────────────────────────────────┘")
-    print(f"  Timestamp:    {datetime.now().isoformat(timespec='seconds')}")
-    print(f"  Tools synced: {len(detected)}")
-    print(f"  Verification: {'PASS' if v['pass'] else 'FAIL'}")
-    print()
-    if v["pass"]:
-        print("  Open any of your AI tools now — they share the same Agent Harness Deploy harness.")
-        print("  Rules: distill/canon/   |   Orchestrator: distill/orchestrator/   |   Skills: distill/skills/")
-    else:
-        print("  Some verification checks FAILED. Review the output above and re-run.")
-        print("  See Docs/12-Troubleshooting.md for common issues.")
-        return 1
-    return rc
+        # Step 3: Verify
+        print("→ Step 3/3: Verifying written files (read-back)...")
+        v = verify_all(args.project_root)
+        for r in v["checks"]:
+            mark = "PASS" if r["ok"] else "FAIL"
+            print(f"    [{mark}] {r['name']}: {r['target']}")
+        print()
+
+        # Final report
+        print("┌─────────────────────────────────────────────────────────┐")
+        print("│  Deploy Complete                                        │")
+        print("└─────────────────────────────────────────────────────────┘")
+        print(f"  Timestamp:    {datetime.now().isoformat(timespec='seconds')}")
+        print(f"  Tools synced: {len(detected)}")
+        print(f"  Verification: {'PASS' if v['pass'] else 'FAIL'}")
+        print()
+        if v["pass"]:
+            print("  Open any of your AI tools now — they share the same Agent Harness Deploy harness.")
+            print("  Rules: distill/canon/   |   Orchestrator: distill/orchestrator/   |   Skills: distill/skills/")
+        else:
+            print("  Some verification checks FAILED. Review the output above and re-run.")
+            print("  See Docs/12-Troubleshooting.md for common issues.")
+            return 1
+        return rc
+    finally:
+        if deploy_lock:
+            try:
+                deploy_lock.release()
+            except Exception:
+                pass
 
 
 if __name__ == "__main__":

@@ -27,8 +27,18 @@ if hasattr(sys.stdout, "reconfigure"):
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+# Allow sync.py to use the shared session helper for locking
+sys.path.insert(0, str(ROOT / "core" / "assets" / "runtime" / "hooks"))
+import ahd_session  # noqa: E402
+
 from adapters import get_adapter, all_tool_ids  # noqa: E402
 from adapters.base import load_registry  # noqa: E402
+
+try:
+    from filelock import FileLock, Timeout
+except Exception:  # pragma: no cover
+    FileLock = None
+    Timeout = None
 
 CANON_DIR = ROOT / "distill" / "canon"
 REPO_AGENTS_MD = ROOT / "AGENTS.md"
@@ -94,15 +104,40 @@ def regenerate_repo_entry(body: str) -> None:
         + "\n" + end_marker + "\n"
         + "<!-- End of auto-generated canon body. Content above the START marker is hand-maintained. -->\n"
     )
-    REPO_AGENTS_MD.write_text(full, encoding="utf-8")
+    # Use repo-level lock to protect AGENTS.md from concurrent writes
+    ahd_session._locked_text_write(REPO_AGENTS_MD, full)
     print(f"Regenerated canon body in {REPO_AGENTS_MD} (from header template + canon)")
 
 
 def sync_all(project_root: str = ".", global_too: bool = False,
-             only_tools: list[str] | None = None) -> int:
+             only_tools: list[str] | None = None, lock: bool = True) -> int:
+    project_root_path = Path(project_root).resolve()
+    lock_path = project_root_path / ".agent" / ".agent_harness_deploy.lock"
+    acquired = None
+    if lock and FileLock:
+        acquired = FileLock(str(lock_path))
+        try:
+            acquired.acquire(timeout=30)
+        except Timeout:
+            print("[!] Could not acquire sync lock; another sync may be running. Continuing anyway.")
+            acquired = None
+
+    try:
+        return _sync_all_impl(project_root, global_too, only_tools, project_root_path)
+    finally:
+        if acquired:
+            try:
+                acquired.release()
+            except Exception:
+                pass
+
+
+def _sync_all_impl(project_root: str, global_too: bool,
+                   only_tools: list[str] | None, project_root_path: Path) -> int:
     body = build_canonical_body()
     tool_ids = only_tools or all_tool_ids()
     seen_paths: set[str] = set()  # dedupe by target path
+    entry_seen: set[str] = set()  # dedupe CLI variants before they write
     entries_written = 0
     assets_written = 0
     assets_skipped = 0
@@ -118,6 +153,19 @@ def sync_all(project_root: str = ".", global_too: bool = False,
             print(f"  [-] {adapter.name:<22} skipped (not detected)")
             tools_skipped += 1
             continue
+
+        # Skip CLI variants that share an entry path with an already-synced tool.
+        # This prevents e.g. codex from writing correctly, then codex_cli overwriting
+        # with a lower-specificity rewrite.
+        entry_keys = set()
+        for p in (adapter.project_entry_path(), adapter.global_entry_path()):
+            if p:
+                entry_keys.add(str(p).lower())
+        if entry_keys & entry_seen:
+            print(f"  [~] {adapter.name:<22} deduped (entry already synced)")
+            continue
+        entry_seen.update(entry_keys)
+
         results = adapter.sync(body, global_too=global_too)
         for r in results:
             key = str(r.target_path).lower()
@@ -150,6 +198,10 @@ def sync_all(project_root: str = ".", global_too: bool = False,
           f"identical={assets_skipped}  tools_skipped={tools_skipped}  "
           f"failed={failed}  backups={backups}")
     print("Next: python scripts/verify.py")
+
+    # Regenerate repo entry after tool sync so AGENTS.md always has the header + markers.
+    regenerate_repo_entry(build_canonical_body())
+
     return 0 if failed == 0 else 1
 
 
@@ -158,7 +210,7 @@ def main() -> int:
     ap.add_argument("--global", dest="global_too", action="store_true",
                     help="also write global entry files (~/.claude, ~/.codex, ...)")
     ap.add_argument("--canon", action="store_true",
-                    help="regenerate repo AGENTS.md canon body from distill/canon/")
+                    help="regenerate repo AGENTS.md canon body from distill/canon/ (no-op; now always done)")
     ap.add_argument("--tools", default=None,
                     help="comma-separated tool ids to sync (default: all detected)")
     ap.add_argument("--project-root", default=".", help="project root (default: cwd)")
@@ -166,12 +218,6 @@ def main() -> int:
 
     only = args.tools.split(",") if args.tools else None
     rc = sync_all(project_root=args.project_root, global_too=args.global_too, only_tools=only)
-
-    # Regenerate repo entry AFTER sync, because sync_all() writes the raw canonical body
-    # to AGENTS.md (Antigravity's entry file), which overwrites the hand-maintained header.
-    # regenerate_repo_entry restores the header + markers structure.
-    if args.canon:
-        regenerate_repo_entry(build_canonical_body())
 
     return rc
 

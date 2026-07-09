@@ -68,7 +68,25 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
-ROOT = Path(__file__).resolve().parent.parent
+try:
+    import ahd_session
+except ImportError:  # pragma: no cover
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "core" / "assets" / "runtime" / "hooks"))
+    import ahd_session
+
+
+def _get_repo_root() -> Path:
+    """Find the main repo root. Prefer git toplevel, then walk up for .git/.agent."""
+    return ahd_session.get_repo_root()
+
+
+ROOT = _get_repo_root()
+
+# Worktree script location: prefer the deployer repo's scripts/, then .agent/scripts/
+if (ROOT / "scripts" / "worktree.py").exists():
+    WORKTREE_SCRIPT = ROOT / "scripts" / "worktree.py"
+else:
+    WORKTREE_SCRIPT = ROOT / ".agent" / "scripts" / "worktree.py"
 
 # Nuwa's 3 cognitive angles (from Docs/Agents/nuwa.md)
 NUWA_ANGLES = {
@@ -212,8 +230,69 @@ def _suggest_nuwa_angles(st: dict) -> list[str]:
     return list(dict.fromkeys(angles))  # dedupe, preserve order
 
 
-def _assign_worktrees(subtasks: list[dict], allocation: dict) -> dict:
-    """Assign a worktree (builder-a, builder-b, ...) to each parallel-safe subtask."""
+def _get_active_sessions(root: Path) -> list[dict]:
+    """Read loop_state.md registry and return active session metadata."""
+    sessions = []
+    registry = root / ".agent" / "loop_state.md"
+    if not registry.exists():
+        return sessions
+    # Very tolerant: look for "| <sid> | ... | active |" or "| in_progress |"
+    in_active = False
+    for line in registry.read_text(encoding="utf-8").splitlines():
+        if line.startswith("## Active sessions"):
+            in_active = True
+            continue
+        if in_active and line.startswith("## "):
+            break
+        if in_active and line.startswith("|") and "session_id" not in line:
+            parts = [p.strip() for p in line.split("|")]
+            parts = [p for p in parts if p]
+            if not parts:
+                continue
+            sid = parts[0]
+            if sid in ("session_id", "---"):
+                continue
+            ss = root / ".agent" / "session_state" / f"{sid}.json"
+            if ss.exists():
+                try:
+                    data = json.loads(ss.read_text(encoding="utf-8"))
+                    sessions.append(data)
+                except Exception:
+                    pass
+    return sessions
+
+
+def _active_session_conflicts(subtasks: list[dict], active_sessions: list[dict]) -> list[dict]:
+    """Detect new subtasks that overlap with active session owned_files/affected_files.
+
+    If `affected_files` is not already recorded in session_state, derive it by
+    expanding the session's `owned_files` with `_expand_file_hints`.
+    """
+    conflicts = []
+    for s in active_sessions:
+        s.setdefault("_expanded_affected", set(s.get("affected_files", [])))
+        if not s["_expanded_affected"] and s.get("owned_files"):
+            s["_expanded_affected"] = _expand_file_hints(list(s.get("owned_files", [])))
+    for st in subtasks:
+        for s in active_sessions:
+            owned = set(s.get("owned_files", []))
+            affected = set(s.get("_expanded_affected", []))
+            touched = set(st.get("_expanded_files", []))
+            overlap = (owned | affected) & touched
+            if overlap:
+                conflicts.append({
+                    "file": list(overlap)[0],
+                    "subtasks": [st["id"], s.get("session_id", "")],
+                    "resolution": "wait_for_session",
+                    "suggested_order": [s.get("session_id", ""), st["id"]],
+                    "depends_on_session": s.get("session_id", ""),
+                    "reason": f"active session {s.get('session_id', '')} owns/affects {overlap}",
+                })
+    return conflicts
+
+
+def _assign_worktrees(subtasks: list[dict], allocation: dict, session_id: str = "") -> dict:
+    """Assign a worker id (builder-a, builder-b, ...). worktree.py will prefix with session_id."""
     worktree_map = {}
     wt_idx = 0
     for st in subtasks:
@@ -223,40 +302,49 @@ def _assign_worktrees(subtasks: list[dict], allocation: dict) -> dict:
     return worktree_map
 
 
-def analyze(subtasks: list[dict]) -> dict:
+def analyze(subtasks: list[dict], session_id: str = "") -> dict:
     """Full analysis: expand files, detect conflicts, allocate, suggest angles."""
+    root = ahd_session.get_repo_root()
+
     # Step 1: Expand file hints (find dependents via grep)
     for st in subtasks:
         st["_expanded_files"] = sorted(_expand_file_hints(st.get("files_hint", [])))
 
-    # Step 2: Detect conflicts
+    # Step 2: Detect internal conflicts
     conflicts = _detect_conflicts(subtasks)
 
-    # Step 3: Allocate ownership
+    # Step 3: Detect conflicts with active sessions
+    active_sessions = _get_active_sessions(root)
+    active_conflicts = _active_session_conflicts(subtasks, active_sessions)
+    conflicts.extend(active_conflicts)
+
+    # Step 4: Allocate ownership
     allocation = _allocate_ownership(subtasks, conflicts)
 
-    # Step 4: Suggest Nuwa angles
+    # Step 5: Suggest Nuwa angles
     for st in subtasks:
         st["_nuwa_angles"] = _suggest_nuwa_angles(st)
 
-    # Step 5: Assign worktrees
-    worktree_map = _assign_worktrees(subtasks, allocation)
+    # Step 6: Assign worktrees
+    worktree_map = _assign_worktrees(subtasks, allocation, session_id)
 
     # Build output
     result_subtasks = []
     for st in subtasks:
         alloc = allocation[st["id"]]
-        has_conflict = any(
-            st["id"] in c["subtasks"] for c in conflicts
-        )
         result_subtasks.append({
             "id": st["id"],
             "goal": st["goal"],
             "owned_files": alloc["owned_files"],
             "shared_files": alloc["shared_files"],
             "conflicts": [c for c in conflicts if st["id"] in c["subtasks"]],
+            "active_session_conflicts": [
+                c for c in active_conflicts if st["id"] in c["subtasks"]
+            ],
             "nuwa_angles": st["_nuwa_angles"],
-            "parallel_safe": len(alloc["shared_files"]) == 0,
+            "parallel_safe": len(alloc["shared_files"]) == 0 and not any(
+                st["id"] in c["subtasks"] for c in active_conflicts
+            ),
             "worktree": worktree_map[st["id"]],
         })
 
@@ -281,6 +369,7 @@ def main() -> int:
     ap.add_argument("--analyze", action="store_true", help="Run analysis")
     ap.add_argument("--subtasks", required=True, help="Path to subtasks.json")
     ap.add_argument("--json", action="store_true", help="Output as JSON")
+    ap.add_argument("--session", default="", help="Session ID to prefix worktree names")
     args = ap.parse_args()
 
     if not args.analyze:
@@ -293,7 +382,7 @@ def main() -> int:
         return 1
 
     subtasks = json.loads(subtask_path.read_text(encoding="utf-8-sig"))
-    result = analyze(subtasks)
+    result = analyze(subtasks, args.session)
 
     if args.json:
         print(json.dumps(result, indent=2, ensure_ascii=False))
@@ -316,15 +405,16 @@ def main() -> int:
         if result["conflicts"]:
             print("  Conflicts:")
             for c in result["conflicts"]:
-                print(f"    {c['file']}: {c['subtasks']} ??{c['resolution']}")
+                print(f"    {c['file']}: {c['subtasks']} -> {c['resolution']}")
             print()
 
         print(f"  Worktrees: {result['worktrees']}")
         print(f"  Summary:   {result['summary']}")
         print()
         print("  Next:")
+        worktree_rel = WORKTREE_SCRIPT.relative_to(ROOT)
         for wt in result["worktrees"]:
-            print(f"    python scripts/worktree.py create {wt}")
+            print(f"    python {worktree_rel} create {wt} --session {args.session}")
         print("    (dispatch Workers with owned_files from above)")
         print("    (after all report: merge each worktree, then clean)")
 

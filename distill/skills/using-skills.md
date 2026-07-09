@@ -38,6 +38,12 @@ Skipping skills = paying the lesson's cost again every time.
 | `chroma-hybrid-search` | High-accuracy code/solution retrieval needed, hallucination must be minimized |
 | `init_deep` | Repository is too large to explain from memory, or codebase shape has changed |
 | `comment_checker` | After code edits that touch comments, or before declaring a code task complete |
+| `slop-detector` | After generating user-facing prose, docs, naming, or abstractions |
+| `claim-grader` | Before finalizing any worker report or analysis |
+| `graph-verify` | Answering structural questions (who calls X, who imports Y, blast radius) |
+| `context-compactor` | Context fill >70%, large tool output, or before reading large files |
+| `memory-audit` | Every 5 iterations, scope change, or before session end |
+| `user-preference` | At BOOT, or whenever a user preference is discovered |
 | `tdd` | Implementing any feature or bugfix, before writing implementation code |
 | `systematic-debugging` | Encountering any bug, test failure, or unexpected behavior, before proposing fixes |
 | `using-skills` | (this skill) Before responding to any request |
@@ -46,8 +52,8 @@ Skipping skills = paying the lesson's cost again every time.
 
 | Type | What it does | Examples |
 |------|-------------|----------|
-| **Process** | Sets the *approach* — how to think about the task | gap-scan, auditor, using-skills, comment_checker, tdd, systematic-debugging |
-| **Implementation** | Does the *work* — executes a specific capability | harness-sensor, loop-memory, chroma-hybrid-search, init_deep |
+| **Process** | Sets the *approach* — how to think about the task | gap-scan, auditor, using-skills, comment_checker, slop-detector, claim-grader, tdd, systematic-debugging |
+| **Implementation** | Does the *work* — executes a specific capability | harness-sensor, loop-memory, chroma-hybrid-search, init_deep, context-compactor, graph-verify, memory-audit, user-preference |
 
 Process skills run first. They shape the approach. Implementation skills run when their
 trigger condition is met during execution.

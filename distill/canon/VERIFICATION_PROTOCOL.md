@@ -9,15 +9,20 @@ Models grade their own work too leniently. The author has invested in the answer
 |--------|--------------|
 | File write | Fresh-context agent `read(path, offset, limit)` confirms content |
 | Code | CLI gate: build / typecheck / lint / test. Pass = verified. |
-| Config sync | `scripts/verify.py` read-backs every written file |
+| Config sync | `scripts/verify.py` read-backs every written file and checks format/link integrity |
 | Visual output | Delegate to vision-capable agent. Never self-judge an image. |
 | High-risk judgment | Multi-agent debate: 2 independent agents, integrate differences |
-| Rules/docs | `read` + `grep` for version headers, link targets, referenced paths |
+| Rules/docs | `read` + `grep` for version headers, link targets, referenced paths; every claim must be evidence-graded |
+| Claims | `claim-grader` skill: every worker report tags `[fact]`, `[inference]`, or `[unverified-guess]` before verification |
 ## Fresh-context verification (for L/XL)
 Give verifier: file paths, acceptance criteria, minimal background (<2KB). Not conversation history or author's reasoning. Verifier reads files cold.
 ## Report contract
 ```
 ## Verdict [PASS | FAIL | NEEDS_ESCALATION]
+## Evidence-graded
+- [fact] <claim> — <file:line|command>
+- [inference: <basis>] <claim> — <basis>
+- [unverified-guess] <claim> — action: <what to verify>
 ## Checked
 - [criterion]: file:line — [evidence]
 ## Problems

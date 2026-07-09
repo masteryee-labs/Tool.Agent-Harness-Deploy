@@ -16,6 +16,10 @@
 9. **No skipping verification at the end.** Every deploy ends with `verify.py` or a fresh-context read-back. A deploy that skips verification is a failed deploy.
 10. **No silent failure.** If a step fails, report the error verbatim and the path. Do not swallow exceptions and continue.
 11. **No modifying the deployer's own canon during a deploy.** A deploy installs canon into tools. It does not edit canon. Canon edits are a separate, human-approved action.
+12. **No auto-resume of a previous session.** If a session is `in_progress`, `crashed`, or `suspected_crashed`, detect it, read `session_state/<session_id>.json`, and ask the human before continuing. Never resume without explicit human approval.
+13. **No reading all `loop_state/*.md` files at BOOT.** Read `.agent/loop_state.md` registry first, then only the one `.agent/loop_state/<session_id>.md` that matches the current task. Mass-reading session files is a red line.
+14. **No secrets in tool log / session state / journal.** Never write keys, tokens, passwords, or API credentials into `.agent/session_state/`, `.agent/session_state/<session_id>/journal.jsonl`, or any tool log. Redact `command`/`counter` before logging.
+15. **No modifying `distill/canon/HANDOFF_LETTER.md`.** Runtime judgment and project spirit go into `.agent/handoff_letter.md`. The canonical `HANDOFF_LETTER.md` is source-only and must not be edited by runtime scripts or sessions.
 
 ## Mechanical Enforcement
 

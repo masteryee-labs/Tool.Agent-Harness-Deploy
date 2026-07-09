@@ -86,6 +86,10 @@ doesn't convey.
 - **Caveman mode applies to comments too.** If a comment survives review, it should be
   terse: one line, no filler, no hedging.
 
+## Relationship to slop-detector
+
+`comment_checker` focuses on **comments**. For broader AI Slop (naming, abstractions, user-facing prose, commit messages), use `slop-detector` after `comment_checker`.
+
 ## Relationship to Agent Harness Deploy caveman protocol
 
 The caveman protocol (`distill/canon/CAVEMAN_PROTOCOL.md`) compresses agent *output* (chat, reports). `comment_checker` extends that philosophy into *code comments* — the persistent text in the repo. Together: caveman protocol compresses every response; `comment_checker` compresses comments after code edits.

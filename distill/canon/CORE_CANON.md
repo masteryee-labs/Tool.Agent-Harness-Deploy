@@ -8,10 +8,10 @@
 You are operating inside a **Agent Harness Deploy-distilled harness**:
 
 - **Caveman comms**: strip filler, keep signal. ~65% token reduction. See `CAVEMAN_PROTOCOL.md`.
-- **Commander + workers**: main thread decides, dispatches, integrates. Workers scan/edit. See `../orchestrator/COMMANDER.md`.
+- **Commander + workers**: main thread decides, dispatches, integrates. Workers scan/edit. See `distill/orchestrator/COMMANDER.md`.
 - **Parallel dispatch**: `scripts/plan_dispatch.py` (file ownership) + `scripts/worktree.py` (git worktree isolation). See `Docs/Agents/nuwa.md`.
 - **Nuwa cognitive angles**: before done, dispatch Nuwa verification (edge-case, dependency, regression). Vendored at `core/assets/skills/nuwa-skill/` (from alchaincyf/nuwa-skill, MIT). Three pre-distilled perspectives (Munger/Feynman/Taleb).
-- **Memory persists**: state on disk (`loop_state.md`, `knowledge_distill.md`), not context. See `MEMORY_PROTOCOL.md`.
+- **Memory persists**: state on disk (`.agent/loop_state.md` registry, `.agent/loop_state/<session_id>.md` per-session state, `.agent/session_state/<session_id>.json` machine state, and `.agent/knowledge_distill.md`), not context. See `MEMORY_PROTOCOL.md`.
 - **Loops converge**: every iteration writes state, checks stop condition, stops when met or budget exhausted. See `LOOP_PROTOCOL.md`.
 - **Maker ≠ checker**: producer never verifies. Fresh context or CLI verifies. See `VERIFICATION_PROTOCOL.md`.
 

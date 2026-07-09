@@ -1,33 +1,62 @@
 #!/usr/bin/env python3
-"""Stop hook ??clean exit when the agent session ends.
+"""Stop hook — clean exit when the agent session ends.
 
 Called by the AI tool when a session stops (agent finishes, user stops, or
 context limit hit). Receives JSON on stdin:
-  {"session_id": "...", "stop_hook_active": true}
+  {"session_id": "..."}
 
 Exit codes:
-  0 = success (always ??stop hooks never block)
+  0 = success (always — stop hooks never block)
 
 What it does:
-  1. Checks if .agent/loop_state.md was written this session. If not, writes
-     a minimal "session ended without state write" note (so the next session
-     knows the previous one didn't crash cleanly).
-  2. Cleans temporary files older than 24h in .agent/tmp/ (if exists).
-  3. Appends a session-end marker to the cold archive.
-
-This implements the canon's "state write is the heartbeat" rule at the runtime
-layer ??even if the agent forgot to write state, the stop hook leaves a trace.
+  1. Resolves session_id.
+  2. Reads session_state and determines status:
+     - completed if state_written is true and last_state_write is recent
+     - crashed otherwise
+  3. If completed: runs memory_audit to merge candidate memory, then loop_memory_sync
+     to archive session files and update loop_state.md registry.
+  4. If crashed: runs loop_memory_sync to mark suspected_crashed without deleting.
+  5. Appends a session-end marker to loop_state_archive.md.
+  6. Cleans temporary files older than 24h in .agent/tmp/.
 """
 import json
+import subprocess
 import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-STATE_PATH = Path(".agent/loop_state.md")
-ARCHIVE_PATH = Path(".agent/loop_state_archive.md")
-TMP_DIR = Path(".agent/tmp")
+import ahd_session
+
 SESSION_MARKER = "<!-- Agent Harness Deploy-stop-hook -->"
+
+
+def _call_script(root: Path, script: str, *args) -> None:
+    """Call a helper script in .agent/scripts/ or scripts/."""
+    for script_dir in (root / ".agent" / "scripts", root / "scripts"):
+        candidate = script_dir / script
+        if candidate.exists():
+            try:
+                subprocess.run(
+                    [sys.executable, str(candidate), *args],
+                    cwd=str(root), capture_output=True, timeout=30
+                )
+            except Exception:
+                pass
+            return
+
+
+def _clean_tmp(tmp_dir: Path) -> None:
+    """Remove temp files older than 24h."""
+    if not tmp_dir.exists():
+        return
+    cutoff = time.time() - 86400
+    for f in tmp_dir.iterdir():
+        try:
+            if f.is_file() and f.stat().st_mtime < cutoff:
+                f.unlink()
+        except Exception:
+            pass
 
 
 def main():
@@ -36,49 +65,46 @@ def main():
     except Exception:
         data = {}
 
-    ts = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    session_id = ahd_session.get_session_id(data)
+    root = ahd_session.get_repo_root()
+    ts = ahd_session.now_utc()
 
-    # 1. Check if loop_state.md exists and was modified recently
-    state_written = False
-    if STATE_PATH.exists():
-        mtime = STATE_PATH.stat().st_mtime
-        # Consider "recent" if modified in last 30 minutes
-        if time.time() - mtime < 1800:
-            state_written = True
+    archive_path = root / ".agent" / "loop_state_archive.md"
+    tmp_dir = root / ".agent" / "tmp"
 
-    if not state_written:
-        # Agent ended without writing state ??leave a trace
+    session_state = ahd_session.read_session_state(session_id, root)
+    state_written = session_state.get("state_written", False)
+    last_state_write = session_state.get("last_state_write", "")
+
+    completed = False
+    if state_written and last_state_write:
         try:
-            STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
-            note = (
-                f"\n{SESSION_MARKER}\n"
-                f"## Session ended {ts}\n"
-                f"State was NOT written by the agent before session end.\n"
-                f"This may indicate: agent crashed, context limit hit, or user stopped mid-task.\n"
-                f"Next session: check the conversation log for what was in progress.\n"
-            )
-            with open(STATE_PATH, "a", encoding="utf-8") as f:
-                f.write(note)
+            last_ts = datetime.fromisoformat(last_state_write)
+            elapsed = (datetime.now(timezone.utc) - last_ts).total_seconds()
+            if elapsed < 1800:  # 30 minutes
+                completed = True
         except Exception:
             pass
 
-    # 2. Clean old temp files
-    if TMP_DIR.exists():
-        cutoff = time.time() - 86400  # 24h
-        for f in TMP_DIR.iterdir():
-            try:
-                if f.is_file() and f.stat().st_mtime < cutoff:
-                    f.unlink()
-            except Exception:
-                pass
+    if completed:
+        # Merge candidate memory before archiving
+        _call_script(root, "memory_audit.py", "--session", session_id)
+        # Archive and update registry
+        _call_script(root, "loop_memory_sync.py", "--session", session_id, "--status", "completed")
+    else:
+        # Mark as suspected crashed; do not delete session_state
+        _call_script(root, "loop_memory_sync.py", "--session", session_id, "--status", "suspected_crashed")
 
-    # 3. Append session-end marker to cold archive
+    # Append session-end marker to cold archive
     try:
-        ARCHIVE_PATH.parent.mkdir(parents=True, exist_ok=True)
-        with open(ARCHIVE_PATH, "a", encoding="utf-8") as f:
-            f.write(f"\n{SESSION_MARKER} session_end ts={ts} state_written={state_written}\n")
+        archive_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(archive_path, "a", encoding="utf-8") as f:
+            f.write(f"\n{SESSION_MARKER} session_end ts={ts} session_id={session_id} status={'completed' if completed else 'crashed'}\n")
     except Exception:
         pass
+
+    # Clean old temp files
+    _clean_tmp(tmp_dir)
 
     sys.exit(0)
 

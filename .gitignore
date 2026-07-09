@@ -19,6 +19,21 @@ verify_out.txt
 # regenerate them on any machine.
 .agent/
 .agents/
+
+# Session runtime state (managed by session hooks)
+.agent/loop_state/
+.agent/loop_state.md
+.agent/session_state/
+.agent/handoff_letter.md
+.agent/tool_log.jsonl
+.agent/tool_log.*.jsonl
+.agent/context_flags*.json
+.agent/context_flags/
+.agent/candidate_memory.jsonl
+.agent/tmp/
+
+# Parallel worktrees
+.worktrees/
 .codex/
 .devin/
 .claude/

@@ -16,6 +16,7 @@ description: "Use when a repository is too large to explain from memory, or when
 - The shape of the codebase has changed (major refactor, new top-level package, directory
   restructure).
 - A new agent keeps making wrong assumptions about which files live where.
+- At BOOT, if the repo has >50 source files or >20 directories, consider running `init_deep` first.
 - Keywords: init_deep, init-deep, hierarchical context, project memory, AGENTS.md tree.
 
 ## Why

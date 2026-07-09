@@ -12,7 +12,7 @@ Agent Harness Deploy is a **self-deploying, cross-tool AI harness deployer**.
 
 It does **one job**: detect which AI coding tools are installed on this machine, then generate
 and sync a single canonical harness (caveman-optimized, multi-agent, memory-enabled,
-loop-engineered) into every detected tool's native config location — so that whichever tool
+loop-engineered, session-concurrent) into every detected tool's native config location — so that whichever tool
 the user opens next, they get the **same** rules, memory, skills, and orchestrator.
 
 **This repo is the deployer, not the product.** The product is the harness it writes into
@@ -22,11 +22,30 @@ your tools. Do not start building features. Do not refactor the deployer. Run th
 
 ## 1. BOOT protocol (order is mandatory)
 
-1. `read(".agent/loop_state.md")` — inherit state (<3KB).
+1. `read(".agent/loop_state.md")` — read the session registry (<3KB).
+   - If the file does not exist, create an empty registry:
+     ```yaml
+     ---
+     context_fill_pct: 0
+     caveman_level: full
+     active_sessions: []
+     active_session: null
+     ---
+     ```
 2. `read(".agent/knowledge_distill.md")` — load anti-patterns (<8KB).
-3. Read `Docs/02-Deployment-Guide.md` — the exact deploy flow.
-4. Output a GoalSpec (see `distill/canon/BOOT_PROTOCOL.md`) and write it to `loop_state.md`.
-5. Run the deployer: `python scripts/distill.py` (or follow `Docs/02-Deployment-Guide.md §Manual deploy`).
+3. `read(".agent/user_profile.md")` — load profile (<2KB).
+4. If `.agent/loop_state.md` has an `active_session` that is `in_progress`, `crashed`, or `suspected_crashed`,
+   `read(".agent/session_state/<session_id>.json")` and `.agent/loop_state/<session_id>.md` **only for audit**.
+   Do not read all `session_state/*.json` or `loop_state/*.md` files. If the previous session's
+   `owned_files`/`affected_files`/`tags` overlap the new task, ask the human whether to continue.
+   **Never auto-resume.**
+5. Read per-session context flags — `.agent/context_flags/<session_id>.json` if it exists.
+6. Output a GoalSpec (see `distill/canon/BOOT_PROTOCOL.md`) and write it to:
+   - `.agent/loop_state/<session_id>.md`
+   - `.agent/session_state/<session_id>.json`
+7. Call `python scripts/loop_memory_sync.py` to update `.agent/loop_state.md` registry.
+8. Read `Docs/02-Deployment-Guide.md` — the exact deploy flow.
+9. Run the deployer: `python scripts/distill.py` (or follow `Docs/02-Deployment-Guide.md §Manual deploy`).
 
 > Do NOT read every Doc. Read `Docs/02-Deployment-Guide.md` first, then load others on demand
 > via the index in `Docs/00-Overview.md`.
@@ -59,6 +78,9 @@ Manual deploy is also supported — see `Docs/02-Deployment-Guide.md §Manual de
 5. Do not hardcode tool paths — use `adapters/registry.json`.
 6. Do not skip the detection step. Detection is the whole point.
 7. Do not start "improving" or "extending" the deployer unless explicitly asked.
+8. Do not auto-resume a previous session — ask the human first.
+9. Do not read all `loop_state/*.md` files at BOOT; only read the registry + the one matching session.
+10. Do not write secrets into `session_state`, `journal.jsonl`, or tool logs.
 
 Full red lines → `distill/canon/REDLINES.md`.
 
@@ -73,7 +95,7 @@ Full red lines → `distill/canon/REDLINES.md`.
 | Per-tool config locations | `Docs/03-Tool-Adapters.md` |
 | Commander + workers design | `Docs/04-Orchestrator-Design.md` |
 | Caveman token optimization | `distill/canon/CAVEMAN_PROTOCOL.md` |
-| Memory system | `distill/canon/MEMORY_PROTOCOL.md` |
+| Memory system (registry + per-session state) | `distill/canon/MEMORY_PROTOCOL.md` |
 | Loop engineering | `distill/canon/LOOP_PROTOCOL.md` |
 | Harness engineering | `distill/canon/HARNESS_ENGINEERING.md` |
 | Multi-thinking modes | `Docs/09-Multi-Thinking-Modes.md` |
@@ -86,6 +108,8 @@ Full red lines → `distill/canon/REDLINES.md`.
 | Nuwa system + Nuwa Team (cognitive diversity) | `Docs/Agents/nuwa.md` |
 | Worktree manager (parallel Worker isolation) | `scripts/worktree.py` |
 | Dispatch planner (file ownership + conflict detection) | `scripts/plan_dispatch.py` |
+| Loop/memory sync (registry regeneration) | `scripts/loop_memory_sync.py` |
+| Memory audit (candidate -> knowledge) | `scripts/memory_audit.py` |
 | Red lines + control plane (8-step lifecycle) | `distill/canon/REDLINES.md` |
 | Judgment rubrics (positive/negative examples) | `distill/canon/JUDGMENT_RUBRICS.md` |
 | Canonical rules (tool-agnostic) | `distill/canon/` |

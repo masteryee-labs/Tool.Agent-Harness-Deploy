@@ -40,6 +40,36 @@ Filler (hedging, restating, transitions, pleasantries) accounts for roughly 65% 
 - Writing Docs/README (full prose).
 - Bad news or clarifying questions (clarity > brevity).
 
+## Dynamic context compaction
+
+Context fill is a leading indicator of token waste. When the window fills, the model falls back to slop. React before it happens.
+
+### Triggers
+- `context_fill_pct > 70%` → switch to `compact` mode.
+- `context_fill_pct > 80%` → switch to `ultra` mode.
+- A single tool output > 20 lines or > 3KB → dispatch `context-compactor` skill.
+- A single `read` would exceed 50 lines → use `read` with `offset`/`limit` or `grep`.
+
+### Automatic load
+- `post_tool_use.py` writes `context_oversized: true` to `.agent/context_flags/<session_id>.json` when a tool response is oversized.
+- `loop-memory` reads `.agent/context_flags/<session_id>.json` at the end of every iteration and updates `.agent/session_state/<session_id>.json` and `.agent/loop_state/<session_id>.md`.
+- `.agent/loop_state.md` registry front matter must include:
+  ```yaml
+  context_fill_pct: <0-100 estimate>
+  caveman_level: <light|compact|full|ultra|wenyan>
+  active_session: s-...
+  ```
+- `.agent/loop_state/<session_id>.md` must include:
+  ```yaml
+  context_fill_pct: <0-100>
+  caveman_level: <light|compact|full|ultra|wenyan>
+  ```
+
+### Compaction rules
+- Use `context-compactor` skill for large payloads.
+- Never compress verbatim items: code, paths, line numbers, errors, exact values.
+- When in doubt, offload the full payload and keep a one-line summary + path.
+
 ## Compression levels
 
 | Level | Cuts | Example |
@@ -53,9 +83,10 @@ Filler (hedging, restating, transitions, pleasantries) accounts for roughly 65% 
 
 | Channel | Default | Escalate to |
 |---------|---------|-------------|
-| Worker → Commander | full | ultra (context >80%) |
+| Worker → Commander | full | compact (>70%) / ultra (>80%) |
 | Commander → user | light | full (user asks) |
 | Memory writes | full | ultra (near 3KB cap) |
+| Large tool output | compact | ultra (context high) |
 | Docs / README | full prose | — |
 | Bad news / questions | full prose | — |
 

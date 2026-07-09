@@ -24,6 +24,7 @@ ROOT = Path(__file__).resolve().parent.parent
 ASSET_SOURCES = {
     "skills": ROOT / "distill" / "skills",
     "orchestrator": ROOT / "distill" / "orchestrator",
+    "canon": ROOT / "distill" / "canon",
     "vault": ROOT / "core" / "assets" / "vault",
     # Vendored external skills (anti-link-rot). nuwa-skill is a cognitive-diversity
     # skill distillation factory, vendored from alchaincyf/nuwa-skill so users never
@@ -33,6 +34,8 @@ ASSET_SOURCES = {
     # + hook registration), MCP templates (server registration). This is what makes
     # the harness rules actually execute at the tool level — not just exist as text.
     "runtime": ROOT / "core" / "assets" / "runtime",
+    # Runtime helper scripts that need to be reachable from a deployed project.
+    "runtime_scripts": ROOT / "scripts",
 }
 
 
@@ -199,6 +202,8 @@ class BaseAdapter:
             if target.exists():
                 backup = target.with_suffix(target.suffix + ".bak")
                 shutil.copy2(target, backup)
+            # Rewrite canonical source paths to deployed paths before wrapping/writing.
+            body = self._rewrite_text(body)
             # Cursor .mdc needs frontmatter
             if self.config.get("format") == "mdc":
                 body = self._wrap_mdc(body)
@@ -213,13 +218,13 @@ class BaseAdapter:
 
     # --- asset sync ------------------------------------------------------
     def _sync_assets(self) -> list[SyncResult]:
-        """Copy skills, orchestrator prompts, and vault assets to the tool's config dirs.
+        """Copy skills, orchestrator prompts, canon, and vault assets to the tool's config dirs.
 
         This is what makes the multi-agent architecture actually deployable. The entry
         file (CLAUDE.md, AGENTS.md, instructions.md) contains rules that reference
-        orchestrator prompts, skills, and vault assets. Without copying those files to
-        the tool's native config location, the agent reads "see COMMANDER.md" but can't
-        find it.
+        orchestrator prompts, skills, canon, and vault assets. Without copying those
+        files to the tool's native config location, the agent reads "see COMMANDER.md"
+        but can't find it.
 
         Targets are read from registry.json: skills_dir, agents_dir. Tools without these
         fields (Cursor, Claude Desktop, CLI variants) get no asset copy — their entry
@@ -229,6 +234,7 @@ class BaseAdapter:
 
         skills_src = ASSET_SOURCES["skills"]
         orchestrator_src = ASSET_SOURCES["orchestrator"]
+        canon_src = ASSET_SOURCES["canon"]
         vault_src = ASSET_SOURCES["vault"]
         nuwa_src = ASSET_SOURCES["nuwa_skill"]
 
@@ -243,6 +249,12 @@ class BaseAdapter:
         if agents_dir_rel and orchestrator_src.is_dir():
             target = self.project_root / agents_dir_rel
             results.extend(self._copy_tree(orchestrator_src, target))
+
+        # Canonical protocols (REDLINES, BOOT, LOOP, etc.) → <config_root>/canon/
+        cfg_root = self._config_root_rel()
+        if cfg_root and canon_src.is_dir():
+            target = self.project_root / cfg_root / "canon"
+            results.extend(self._copy_tree(canon_src, target))
 
         # Vault assets (anti-link-rot templates) → <skills_dir|agents_dir>/assets/vault/
         vault_base_rel = skills_dir_rel or agents_dir_rel
@@ -312,6 +324,32 @@ class BaseAdapter:
             if template_path.is_file():
                 target = self.project_root / mcp_file_rel
                 results.append(self._merge_mcp(target, template_path, mcp_format))
+
+        # 4. Copy runtime helper scripts to .agent/scripts/ and seed session runtime dirs
+        #    These are needed by the orchestrator prompts regardless of tool-specific hooks.
+        scripts_dir = self.project_root / ".agent" / "scripts"
+        scripts_dir.mkdir(parents=True, exist_ok=True)
+        for subdir in ("session_state", "loop_state", "loop_state_archive", "context_flags"):
+            (self.project_root / ".agent" / subdir).mkdir(parents=True, exist_ok=True)
+
+        for script_name in (
+            "worktree.py", "plan_dispatch.py", "session_manager.py",
+            "loop_memory_sync.py", "memory_audit.py", "pre_task_audit.py"
+        ):
+            src = ASSET_SOURCES["runtime_scripts"] / script_name
+            if src.is_file():
+                results.append(self._copy_file_with_rewrite(src, scripts_dir / script_name))
+
+        # 5. Copy ahd_session.py to .agent/scripts/ so scripts can import it
+        ahd_src = ASSET_SOURCES["runtime"] / "hooks" / "ahd_session.py"
+        if ahd_src.is_file():
+            results.append(self._copy_file_with_rewrite(ahd_src, scripts_dir / "ahd_session.py"))
+            # Also copy to hooks dir if it was not already present (some tools may only copy scripts)
+            hooks_dir_rel = rt.get("hooks_dir")
+            if hooks_dir_rel:
+                hooks_dir = self.project_root / hooks_dir_rel
+                if hooks_dir.exists():
+                    results.append(self._copy_file_with_rewrite(ahd_src, hooks_dir / "ahd_session.py"))
 
         return results
 
@@ -422,6 +460,110 @@ class BaseAdapter:
                 result[key] = val
         return result
 
+    def _config_root_rel(self) -> Optional[str]:
+        """Return the tool config root (parent of skills_dir/agents_dir) relative to project root.
+
+        Examples:
+        - claude_code: .claude/
+        - antigravity: .agents/
+        - devin: .devin/
+        """
+        for rel in (self.config.get("skills_dir"), self.config.get("agents_dir"),
+                    self.config.get("rules_dir"),
+                    self.spec.get("runtime", {}).get("hooks_dir")):
+            if rel:
+                p = Path(rel)
+                parts = [part for part in p.parts if part not in (".", "")]
+                if not parts:
+                    continue
+                # First directory component is the config root.
+                root = parts[0]
+                return root + "/"
+        return None
+
+    def _path_replacements(self) -> list[tuple[str, str]]:
+        """Build source -> deployed path replacements for this tool.
+
+        Canonical text uses repo-root paths (distill/..., core/..., scripts/...).
+        When deployed, these must point to the tool's native config location.
+        """
+        reps: list[tuple[str, str]] = []
+        skills_dir = self.config.get("skills_dir")
+        agents_dir = self.config.get("agents_dir")
+        vault_base = skills_dir or agents_dir
+        cfg_root = self._config_root_rel()
+
+        # canon → <config_root>/canon/
+        if cfg_root:
+            reps.append(("distill/canon/", cfg_root + "canon/"))
+        # orchestrator prompts → agents_dir (or config root for antigravity-style)
+        if agents_dir:
+            reps.append(("distill/orchestrator/", agents_dir.replace("\\", "/").rstrip("/") + "/"))
+        elif cfg_root:
+            reps.append(("distill/orchestrator/", cfg_root))
+        # skills → skills_dir
+        if skills_dir:
+            reps.append(("distill/skills/", skills_dir.replace("\\", "/").rstrip("/") + "/"))
+        elif cfg_root:
+            reps.append(("distill/skills/", cfg_root + "skills/"))
+        # vault and nuwa-skill
+        if vault_base:
+            vault_dir = vault_base.replace("\\", "/").rstrip("/") + "/assets/vault/"
+            nuwa_dir = vault_base.replace("\\", "/").rstrip("/") + "/nuwa-skill/"
+            reps.append(("core/assets/vault/", vault_dir))
+            reps.append(("core/assets/skills/nuwa-skill/", nuwa_dir))
+        # Runtime helper scripts
+        reps.append(("scripts/worktree.py", ".agent/scripts/worktree.py"))
+        reps.append(("scripts/plan_dispatch.py", ".agent/scripts/plan_dispatch.py"))
+        reps.append(("scripts/session_manager.py", ".agent/scripts/session_manager.py"))
+        reps.append(("scripts/loop_memory_sync.py", ".agent/scripts/loop_memory_sync.py"))
+        reps.append(("scripts/memory_audit.py", ".agent/scripts/memory_audit.py"))
+        reps.append(("scripts/pre_task_audit.py", ".agent/scripts/pre_task_audit.py"))
+        # Hook helper
+        reps.append(("core/assets/runtime/hooks/ahd_session.py", ".agent/scripts/ahd_session.py"))
+        return reps
+
+    def _rewrite_text(self, text: str) -> str:
+        """Rewrite canonical source paths to deployed paths.
+
+        Must be called on the canonical body and on every copied asset file.
+        """
+        for old, new in self._path_replacements():
+            text = text.replace(old, new)
+        return text
+
+    def _copy_file_with_rewrite(self, src: Path, dst: Path) -> SyncResult:
+        """Copy a single file, rewriting source paths for text files.
+
+        Backs up an existing file before overwrite. Returns a SyncResult.
+        """
+        try:
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            backup = None
+            if dst.exists():
+                if dst.read_bytes() == src.read_bytes():
+                    return SyncResult(
+                        self.tool_id, self.name, str(dst), "skipped",
+                        None, "identical content")
+                backup = dst.with_suffix(dst.suffix + ".bak")
+                shutil.copy2(dst, backup)
+
+            data = src.read_bytes()
+            if src.suffix.lower() in {".md", ".py", ".json", ".toml", ".yaml", ".yml", ".txt", ".mdc", ".mdx"}:
+                try:
+                    text = data.decode("utf-8")
+                    text = self._rewrite_text(text)
+                    data = text.encode("utf-8")
+                except UnicodeDecodeError:
+                    pass
+            dst.write_bytes(data)
+            return SyncResult(
+                self.tool_id, self.name, str(dst), "written",
+                str(backup) if backup else None, None)
+        except Exception as e:
+            return SyncResult(
+                self.tool_id, self.name, str(dst), "failed", None, str(e))
+
     def _merge_mcp(self, target: Path, template_path: Path, fmt: str) -> SyncResult:
         """Merge MCP config template into target, preserving existing MCP servers."""
         try:
@@ -467,6 +609,9 @@ class BaseAdapter:
 
         Idempotent: if a file already exists with identical content, it is skipped (no
         .bak created). If content differs, the existing file is backed up to .bak first.
+        Text files (md, py, json, toml, yaml, yml, txt, mdc, mdx) are rewritten in place
+        so that source paths (distill/..., core/..., scripts/...) map to the deployed
+        location.
         """
         results = []
         if not src.exists() or not src.is_dir():
@@ -475,28 +620,12 @@ class BaseAdapter:
         for src_file in sorted(src.rglob("*")):
             if src_file.is_dir():
                 continue
+            # Skip runtime cache / bytecode artifacts (red line: never ship .pyc)
+            if "__pycache__" in src_file.parts or src_file.suffix == ".pyc":
+                continue
             rel = src_file.relative_to(src)
             dst_file = dst / rel
-            try:
-                dst_file.parent.mkdir(parents=True, exist_ok=True)
-                backup = None
-                if dst_file.exists():
-                    # Skip if content is identical (idempotent re-run)
-                    if dst_file.read_bytes() == src_file.read_bytes():
-                        results.append(SyncResult(
-                            self.tool_id, self.name, str(dst_file), "skipped",
-                            None, "identical content"))
-                        continue
-                    # Content differs — backup before overwrite (red line #1)
-                    backup = dst_file.with_suffix(dst_file.suffix + ".bak")
-                    shutil.copy2(dst_file, backup)
-                shutil.copy2(src_file, dst_file)
-                results.append(SyncResult(
-                    self.tool_id, self.name, str(dst_file), "written",
-                    str(backup) if backup else None, None))
-            except Exception as e:
-                results.append(SyncResult(
-                    self.tool_id, self.name, str(dst_file), "failed", None, str(e)))
+            results.append(self._copy_file_with_rewrite(src_file, dst_file))
         return results
 
     def _wrap_mdc(self, body: str) -> str:
@@ -559,6 +688,16 @@ class BaseAdapter:
             out.append((f"asset:{commander_path}", exists,
                         "orchestrator present" if exists else "orchestrator missing"))
 
+        # Canon check — canonical protocols were copied to <config_root>/canon/
+        cfg_root = self._config_root_rel()
+        if cfg_root:
+            canon_dir = self.project_root / cfg_root / "canon"
+            for canon_file in ("CAVEMAN_PROTOCOL.md", "BOOT_PROTOCOL.md", "REDLINES.md"):
+                path = canon_dir / canon_file
+                exists = path.exists()
+                out.append((f"asset:{path}", exists,
+                            "canon present" if exists else "canon missing"))
+
         # Vault check — at least one vault asset file
         vault_base_rel = skills_dir_rel or agents_dir_rel
         if vault_base_rel:
@@ -574,6 +713,23 @@ class BaseAdapter:
             out.append((f"asset:{nuwa_path}", exists,
                         "nuwa-skill present" if exists else "nuwa-skill missing"))
 
+        # Runtime helper scripts check
+        scripts_dir = self.project_root / ".agent" / "scripts"
+        for script_name in (
+            "worktree.py", "plan_dispatch.py", "session_manager.py",
+            "loop_memory_sync.py", "memory_audit.py", "ahd_session.py"
+        ):
+            script_path = scripts_dir / script_name
+            exists = script_path.exists()
+            out.append((f"runtime:{script_path}", exists,
+                        "helper script present" if exists else "helper script missing"))
+
+        # Session state directory check
+        session_state_dir = self.project_root / ".agent" / "session_state"
+        loop_state_dir = self.project_root / ".agent" / "loop_state"
+        for label, d in (("session_state", session_state_dir), ("loop_state", loop_state_dir)):
+            out.append((f"runtime:{d}", d.exists(), f"{label} dir present" if d.exists() else f"{label} dir missing"))
+
         # Runtime layer verification — hooks, settings, MCP
         rt = self.spec.get("runtime", {})
         if rt.get("enabled"):
@@ -584,8 +740,20 @@ class BaseAdapter:
                 for hook_name in ("pre_tool_use.py", "post_tool_use.py", "stop.py"):
                     hook_path = hooks_dir / hook_name
                     exists = hook_path.exists()
-                    out.append((f"runtime:{hook_path}", exists,
-                                "hook present" if exists else "hook missing"))
+                    if not exists:
+                        out.append((f"runtime:{hook_path}", False, "hook missing"))
+                        continue
+                    # Basic sanity check: post_tool_use must resolve session_id
+                    if hook_name == "post_tool_use.py":
+                        try:
+                            content = hook_path.read_text(encoding="utf-8", errors="ignore")
+                            ok = "get_session_id" in content or "session_id" in content
+                            out.append((f"runtime:{hook_path}", ok,
+                                        "hook present with session_id fallback" if ok else "hook missing session_id fallback"))
+                        except Exception as e:
+                            out.append((f"runtime:{hook_path}", False, str(e)))
+                    else:
+                        out.append((f"runtime:{hook_path}", True, "hook present"))
 
             # Settings file
             settings_file_rel = rt.get("settings_file")
