@@ -43,6 +43,15 @@ verify_out.txt
 .zcode/
 .kimi-code/
 
+# VS Code extension / desktop app config dirs
+.github/copilot-instructions.md
+.gemini/
+.clinerules/
+.roo/
+.continue/
+.windsurf/
+.cline/
+
 # OS
 .DS_Store
 Thumbs.db

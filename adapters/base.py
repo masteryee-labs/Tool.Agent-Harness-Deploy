@@ -146,6 +146,10 @@ class BaseAdapter:
             if scope == "project" and not p.is_absolute():
                 p = self.project_root / p
             return (p.is_file(), f"file:{p} exists={p.is_file()}")
+        if ctype == "glob":
+            p = Path(val)
+            matches = list(p.parent.glob(p.name))
+            return (len(matches) > 0, f"glob:{val} matches={len(matches)}")
         return (False, f"unknown check type {ctype}")
 
     # --- path resolution -------------------------------------------------

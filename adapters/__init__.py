@@ -21,6 +21,15 @@ _TOOL_ID_TO_MODULE = {
     "agy_cli": "agy_cli",
     "codex_cli": "codex_cli",
     "devin_cli": "devin_cli",
+    "claude_code_vscode": "claude_code_vscode",
+    "codex_vscode": "codex_vscode",
+    "github_copilot": "github_copilot",
+    "gemini_code_assist": "gemini_code_assist",
+    "cline": "cline",
+    "roo_code": "roo_code",
+    "continue_dev": "continue_dev",
+    "windsurf": "windsurf",
+    "chatgpt_desktop": "chatgpt_desktop",
 }
 
 

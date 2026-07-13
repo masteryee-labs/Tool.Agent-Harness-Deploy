@@ -40,7 +40,8 @@ class LinkReport:
 _KNOWN_ROOTS = (
     r"distill/|core/|scripts/|Docs/|"
     r"\.agents/|\.claude/|\.codex/|\.devin/|\.cursor/|"
-    r"\.open/|\.openclaw/|\.hermes/|\.zcode/|\.kimi/|\.opencode/"
+    r"\.open/|\.openclaw/|\.hermes/|\.zcode/|\.kimi/|\.opencode/|"
+    r"\.github/|\.gemini/|\.clinerules/|\.roo/|\.continue/|\.windsurf/"
 )
 
 # Markdown links, backticks, and bare paths with a known root.

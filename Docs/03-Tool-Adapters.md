@@ -34,7 +34,7 @@
 - **config.format**: `markdown` (default), `mdc` (Cursor, wraps in YAML frontmatter),
   `json` (Claude Desktop, injects a pointer into existing JSON).
 
-## Supported tools (14)
+## Supported tools (23)
 
 | Tool | id | Entry file | Format |
 |------|----|-----------|--------|
@@ -52,9 +52,22 @@
 | AGY CLI | `agy_cli` | `AGENTS.md` (shared) | markdown |
 | Codex CLI | `codex_cli` | `.codex/instructions.md` (shared) | markdown |
 | Devin CLI | `devin_cli` | `.devin/AGENTS.md` (shared) | markdown |
+| Claude Code for VS Code | `claude_code_vscode` | `.claude/CLAUDE.md` (shared) | markdown |
+| Codex IDE Extension | `codex_vscode` | `.codex/instructions.md` (shared) | markdown |
+| GitHub Copilot | `github_copilot` | `.github/copilot-instructions.md` | markdown |
+| Gemini Code Assist | `gemini_code_assist` | `GEMINI.md` | markdown |
+| Cline | `cline` | `.clinerules/agent-harness-deploy.md` | markdown |
+| Roo Code | `roo_code` | `.roo/rules/agent-harness-deploy.md` | markdown |
+| Continue | `continue_dev` | `.continue/rules/agent-harness-deploy.md` | markdown |
+| Windsurf | `windsurf` | `.windsurf/rules/agent-harness-deploy.md` | markdown |
+| ChatGPT Desktop | `chatgpt_desktop` | `.codex/instructions.md` (shared) | markdown |
 
-> CLI variants (agy_cli, codex_cli, devin_cli) share entry files with their parent tools.
+> CLI/extension/desktop variants share entry files with their parent tools.
 > Sync dedupes by target path, so the file is written once.
+>
+> **VS Code extension detection**: uses `glob` check type to match extension
+> directories (e.g. `anthropic.claude-code-*`) in `~/.vscode/extensions/`.
+> **Desktop app detection**: uses `dir` checks on install locations.
 
 ## How an adapter works
 

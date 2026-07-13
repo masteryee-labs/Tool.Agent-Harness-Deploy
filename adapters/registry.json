@@ -476,6 +476,358 @@
         "mcp_template": "claude_code_mcp.json",
         "hook_command": "python {hook_path}"
       }
+    },
+    {
+      "id": "claude_code_vscode",
+      "name": "Claude Code for VS Code",
+      "detect": {
+        "method": "any",
+        "checks": [
+          {
+            "type": "glob",
+            "value": "${USERPROFILE}/.vscode/extensions/anthropic.claude-code-*"
+          },
+          {
+            "type": "glob",
+            "value": "${HOME}/.vscode/extensions/anthropic.claude-code-*"
+          }
+        ]
+      },
+      "config": {
+        "project_entry": ".claude/CLAUDE.md",
+        "global_entry": "${HOME}/.claude/CLAUDE.md",
+        "skills_dir": ".claude/skills/",
+        "agents_dir": ".claude/agents/",
+        "format": "markdown",
+        "entry_filename": "CLAUDE.md",
+        "notes": "Claude Code VS Code extension. Shares ~/.claude/ config with Claude Code CLI. Extension ID: anthropic.claude-code. Deduped in sync."
+      },
+      "runtime": {
+        "enabled": true,
+        "settings_file": ".claude/settings.json",
+        "settings_format": "json",
+        "settings_template": "claude_code.json",
+        "hooks_dir": ".claude/hooks/",
+        "mcp_file": ".mcp.json",
+        "mcp_format": "json",
+        "mcp_template": "claude_code_mcp.json",
+        "hook_command": "python {hook_path}"
+      }
+    },
+    {
+      "id": "codex_vscode",
+      "name": "Codex IDE Extension",
+      "detect": {
+        "method": "any",
+        "checks": [
+          {
+            "type": "glob",
+            "value": "${USERPROFILE}/.vscode/extensions/openai.chatgpt-*"
+          },
+          {
+            "type": "glob",
+            "value": "${HOME}/.vscode/extensions/openai.chatgpt-*"
+          }
+        ]
+      },
+      "config": {
+        "project_entry": ".codex/instructions.md",
+        "global_entry": "${HOME}/.codex/instructions.md",
+        "skills_dir": ".codex/skills/",
+        "agents_dir": ".codex/agents/",
+        "format": "markdown",
+        "entry_filename": "instructions.md",
+        "notes": "Codex IDE extension for VS Code/Cursor/Windsurf. Extension ID: openai.chatgpt. Shares ~/.codex/ config (CODEX_HOME) with Codex CLI. Deduped in sync."
+      },
+      "runtime": {
+        "enabled": true,
+        "settings_file": ".codex/config.toml",
+        "settings_format": "toml",
+        "settings_template": "codex.toml",
+        "hooks_dir": ".codex/hooks/",
+        "mcp_file": ".codex/config.toml",
+        "mcp_format": "toml_inline",
+        "mcp_template": null,
+        "hook_command": "python {hook_path}"
+      }
+    },
+    {
+      "id": "github_copilot",
+      "name": "GitHub Copilot",
+      "detect": {
+        "method": "any",
+        "checks": [
+          {
+            "type": "glob",
+            "value": "${USERPROFILE}/.vscode/extensions/github.copilot-*"
+          },
+          {
+            "type": "glob",
+            "value": "${HOME}/.vscode/extensions/github.copilot-*"
+          }
+        ]
+      },
+      "config": {
+        "project_entry": ".github/copilot-instructions.md",
+        "global_entry": null,
+        "format": "markdown",
+        "entry_filename": "copilot-instructions.md",
+        "notes": "GitHub Copilot reads .github/copilot-instructions.md at workspace root. Also reads AGENTS.md in agent mode. No hooks or MCP file — uses VS Code settings."
+      },
+      "runtime": {
+        "enabled": false,
+        "settings_file": null,
+        "settings_format": null,
+        "settings_template": null,
+        "hooks_dir": null,
+        "mcp_file": null,
+        "mcp_format": null,
+        "mcp_template": null,
+        "hook_command": null,
+        "notes": "GitHub Copilot has no file-based hooks system. Only the instructions file is deployed."
+      }
+    },
+    {
+      "id": "gemini_code_assist",
+      "name": "Gemini Code Assist",
+      "detect": {
+        "method": "any",
+        "checks": [
+          {
+            "type": "glob",
+            "value": "${USERPROFILE}/.vscode/extensions/google.gemini-code-assist*"
+          },
+          {
+            "type": "glob",
+            "value": "${HOME}/.vscode/extensions/google.gemini-code-assist*"
+          }
+        ]
+      },
+      "config": {
+        "project_entry": "GEMINI.md",
+        "global_entry": "${HOME}/.gemini/GEMINI.md",
+        "skills_dir": ".gemini/skills/",
+        "format": "markdown",
+        "entry_filename": "GEMINI.md",
+        "notes": "Gemini Code Assist VS Code extension. Reads GEMINI.md at project root (also reads AGENTS.md). Global config in ~/.gemini/. No file-based hooks."
+      },
+      "runtime": {
+        "enabled": false,
+        "settings_file": null,
+        "settings_format": null,
+        "settings_template": null,
+        "hooks_dir": null,
+        "mcp_file": null,
+        "mcp_format": null,
+        "mcp_template": null,
+        "hook_command": null,
+        "notes": "Gemini Code Assist uses VS Code extension settings, not file-based hooks."
+      }
+    },
+    {
+      "id": "cline",
+      "name": "Cline",
+      "detect": {
+        "method": "any",
+        "checks": [
+          {
+            "type": "glob",
+            "value": "${USERPROFILE}/.vscode/extensions/saoudrizwan.claude-dev-*"
+          },
+          {
+            "type": "glob",
+            "value": "${HOME}/.vscode/extensions/saoudrizwan.claude-dev-*"
+          },
+          {
+            "type": "glob",
+            "value": "${USERPROFILE}/.vscode/extensions/cline.cline-*"
+          }
+        ]
+      },
+      "config": {
+        "project_entry": ".clinerules/agent-harness-deploy.md",
+        "global_entry": "${USERPROFILE}/Documents/Cline/Rules/agent-harness-deploy.md",
+        "skills_dir": ".clinerules/",
+        "format": "markdown",
+        "entry_filename": "agent-harness-deploy.md",
+        "notes": "Cline VS Code extension. Reads .clinerules/*.md at project root. Also reads AGENTS.md. Global rules in ~/Documents/Cline/Rules/."
+      },
+      "runtime": {
+        "enabled": true,
+        "settings_file": null,
+        "settings_format": null,
+        "settings_template": null,
+        "hooks_dir": null,
+        "mcp_file": "${HOME}/.cline/data/settings/cline_mcp_settings.json",
+        "mcp_format": "json",
+        "mcp_template": "cline_mcp.json",
+        "hook_command": null,
+        "notes": "Cline has MCP settings at ~/.cline/data/settings/cline_mcp_settings.json but no file-based hooks. Only entry file and MCP are deployed."
+      }
+    },
+    {
+      "id": "roo_code",
+      "name": "Roo Code",
+      "detect": {
+        "method": "any",
+        "checks": [
+          {
+            "type": "glob",
+            "value": "${USERPROFILE}/.vscode/extensions/rooveterinaryinc.roo-cline-*"
+          },
+          {
+            "type": "glob",
+            "value": "${HOME}/.vscode/extensions/rooveterinaryinc.roo-cline-*"
+          }
+        ]
+      },
+      "config": {
+        "project_entry": ".roo/rules/agent-harness-deploy.md",
+        "global_entry": null,
+        "skills_dir": ".roo/rules/",
+        "format": "markdown",
+        "entry_filename": "agent-harness-deploy.md",
+        "notes": "Roo Code VS Code extension (fork of Cline). Reads .roo/rules/*.md. Does NOT read .clinerules/. Mode-specific dirs: .roo/rules-code/, .roo/rules-architect/, etc."
+      },
+      "runtime": {
+        "enabled": true,
+        "settings_file": null,
+        "settings_format": null,
+        "settings_template": null,
+        "hooks_dir": null,
+        "mcp_file": "${HOME}/.roo/data/settings/roo_mcp_settings.json",
+        "mcp_format": "json",
+        "mcp_template": "cline_mcp.json",
+        "hook_command": null,
+        "notes": "Roo Code has MCP settings but no file-based hooks. Only entry file and MCP are deployed."
+      }
+    },
+    {
+      "id": "continue_dev",
+      "name": "Continue",
+      "detect": {
+        "method": "any",
+        "checks": [
+          {
+            "type": "glob",
+            "value": "${USERPROFILE}/.vscode/extensions/continue.continue-*"
+          },
+          {
+            "type": "glob",
+            "value": "${HOME}/.vscode/extensions/continue.continue-*"
+          }
+        ]
+      },
+      "config": {
+        "project_entry": ".continue/rules/agent-harness-deploy.md",
+        "global_entry": "${HOME}/.continue/rules/agent-harness-deploy.md",
+        "skills_dir": ".continue/rules/",
+        "format": "markdown",
+        "entry_filename": "agent-harness-deploy.md",
+        "notes": "Continue VS Code extension. Reads .continue/rules/*.md. Global config in ~/.continue/config.yaml (YAML format). Rules are plain Markdown."
+      },
+      "runtime": {
+        "enabled": true,
+        "settings_file": null,
+        "settings_format": null,
+        "settings_template": null,
+        "hooks_dir": null,
+        "mcp_file": "${HOME}/.continue/config.yaml",
+        "mcp_format": "yaml",
+        "mcp_template": null,
+        "hook_command": null,
+        "notes": "Continue uses config.yaml for MCP servers. No file-based hooks. Only entry file is deployed."
+      }
+    },
+    {
+      "id": "windsurf",
+      "name": "Windsurf",
+      "detect": {
+        "method": "any",
+        "checks": [
+          {
+            "type": "dir",
+            "value": "${APPDATA}/Windsurf"
+          },
+          {
+            "type": "dir",
+            "value": "${LOCALAPPDATA}/Programs/Windsurf"
+          },
+          {
+            "type": "dir",
+            "value": "${HOME}/.codeium/windsurf"
+          },
+          {
+            "type": "dir",
+            "value": "/Applications/Windsurf.app"
+          }
+        ]
+      },
+      "config": {
+        "project_entry": ".windsurf/rules/agent-harness-deploy.md",
+        "global_entry": "${HOME}/.codeium/windsurf/memories/global_rules.md",
+        "skills_dir": ".windsurf/rules/",
+        "format": "markdown",
+        "entry_filename": "agent-harness-deploy.md",
+        "notes": "Windsurf IDE (by Codeium). Reads .windsurf/rules/*.md with YAML frontmatter (trigger: always_on). Also reads AGENTS.md. Global rules in ~/.codeium/windsurf/memories/global_rules.md."
+      },
+      "runtime": {
+        "enabled": true,
+        "settings_file": null,
+        "settings_format": null,
+        "settings_template": null,
+        "hooks_dir": null,
+        "mcp_file": "${HOME}/.codeium/windsurf/mcp_config.json",
+        "mcp_format": "json",
+        "mcp_template": "windsurf_mcp.json",
+        "hook_command": null,
+        "notes": "Windsurf uses MCP config at ~/.codeium/windsurf/mcp_config.json. No file-based hooks. Only entry file and MCP are deployed."
+      }
+    },
+    {
+      "id": "chatgpt_desktop",
+      "name": "ChatGPT Desktop",
+      "detect": {
+        "method": "any",
+        "checks": [
+          {
+            "type": "dir",
+            "value": "${LOCALAPPDATA}/Programs/OpenAI/Codex"
+          },
+          {
+            "type": "dir",
+            "value": "${LOCALAPPDATA}/OpenAI"
+          },
+          {
+            "type": "dir",
+            "value": "/Applications/ChatGPT.app"
+          },
+          {
+            "type": "dir",
+            "value": "${HOME}/.codex"
+          }
+        ]
+      },
+      "config": {
+        "project_entry": ".codex/instructions.md",
+        "global_entry": "${HOME}/.codex/instructions.md",
+        "skills_dir": ".codex/skills/",
+        "agents_dir": ".codex/agents/",
+        "format": "markdown",
+        "entry_filename": "instructions.md",
+        "notes": "ChatGPT Desktop app with Codex mode. Shares ~/.codex/ (CODEX_HOME) with Codex CLI and IDE extension. Deduped in sync."
+      },
+      "runtime": {
+        "enabled": true,
+        "settings_file": ".codex/config.toml",
+        "settings_format": "toml",
+        "settings_template": "codex.toml",
+        "hooks_dir": ".codex/hooks/",
+        "mcp_file": ".codex/config.toml",
+        "mcp_format": "toml_inline",
+        "mcp_template": null,
+        "hook_command": "python {hook_path}"
+      }
     }
   ],
   "sync_policy": {

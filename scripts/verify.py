@@ -47,6 +47,7 @@ BASE_ALLOWED_MISSING = DEFAULT_ALLOWED_MISSING + [
 _TOOL_ROOTS = [
     ".claude/", ".codex/", ".devin/", ".agents/", ".cursor/",
     ".open/", ".openclaw/", ".hermes/", ".zcode/", ".kimi/", ".opencode/",
+    ".github/", ".gemini/", ".clinerules/", ".roo/", ".continue/", ".windsurf/",
 ]
 
 # Runtime-generated subpaths within a tool's config root. These are created at runtime
