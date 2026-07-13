@@ -89,8 +89,8 @@ def _distill(entries: list[dict]) -> list[dict]:
 
 def run(root: Path, session_id: str) -> None:
     sid = ahd_session.slugify_session_id(session_id)
-    candidate_path = root / ".agent" / "session_state" / sid / "candidate_memory.jsonl"
-    knowledge_path = root / ".agent" / "knowledge_distill.md"
+    candidate_path = ahd_session.get_config_root(root) / "session_state" / sid / "candidate_memory.jsonl"
+    knowledge_path = ahd_session.get_config_root(root) / "knowledge_distill.md"
 
     candidates = []
     if candidate_path.exists():

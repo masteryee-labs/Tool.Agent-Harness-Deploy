@@ -27,12 +27,14 @@ from adapters import get_adapter, all_tool_ids  # noqa: E402
 from adapters.verify_links import check_file, DEFAULT_ALLOWED_MISSING  # noqa: E402
 
 # References that are commands or docs, not necessarily present in a deployed project.
-# `scripts/worktree.py` and `scripts/plan_dispatch.py` are rewritten to `.agent/scripts/`
+# `scripts/worktree.py` and `scripts/plan_dispatch.py` are rewritten to `<config_root>/scripts/`
 # during sync; other `scripts/` entries are repo/deployer-only commands.
 BASE_ALLOWED_MISSING = DEFAULT_ALLOWED_MISSING + [
     "Docs/",
     # .agent/ files are runtime-generated (loop_state, session_state, handoff_letter, knowledge_distill)
     ".agent/",
+    # Deployer-repo directories not present in a deployed project
+    "adapters/",
     "scripts/verify.py",
     "scripts/distill.py",
     "scripts/detect.py",
@@ -47,6 +49,21 @@ _TOOL_ROOTS = [
     ".open/", ".openclaw/", ".hermes/", ".zcode/", ".kimi/", ".opencode/",
 ]
 
+# Runtime-generated subpaths within a tool's config root. These are created at runtime
+# by hooks and scripts, not at deploy time, so missing links to them are not errors.
+_RUNTIME_GENERATED_SUBPATHS = [
+    "loop_state.md",
+    "loop_state/",
+    "session_state/",
+    "loop_state_archive.md",
+    "loop_state_archive/",
+    "context_flags/",
+    "knowledge_distill.md",
+    "handoff_letter.md",
+    "user_profile.md",
+    "tmp/",
+]
+
 
 def _allowed_missing_for(adapter) -> list[str]:
     """Build allowed-missing list for a given tool.
@@ -54,6 +71,10 @@ def _allowed_missing_for(adapter) -> list[str]:
     The current tool's own config root is excluded from the allow list so that broken
     internal links (e.g. `.codex/COMMANDER.md` instead of `.codex/agents/COMMANDER.md`)
     are still flagged. All other tool roots are allowed because they are examples.
+
+    Runtime-generated paths within the current tool's root (loop_state, session_state,
+    knowledge_distill, etc.) are added to the allow list because they don't exist at
+    deploy time — they're created by hooks and scripts at runtime.
     """
     current_root = adapter._config_root_rel()
     allowed = list(BASE_ALLOWED_MISSING)
@@ -62,32 +83,41 @@ def _allowed_missing_for(adapter) -> list[str]:
         if current_root and root.rstrip("/") == current_root.rstrip("/"):
             continue
         allowed.append(root)
+    # Allow runtime-generated paths within the current tool's config root
+    if current_root:
+        for sub in _RUNTIME_GENERATED_SUBPATHS:
+            allowed.append(current_root + sub)
     return allowed
 
 
-def _verify_session_runtime(project_root: Path) -> list[dict]:
-    """Standalone check for session concurrency directories."""
+def _verify_session_runtime(project_root: Path, runtime_root: str, tool_id: str) -> list[dict]:
+    """Check session concurrency directories and helper scripts for a given runtime root.
+
+    Each tool has its own config root (e.g. .agents/ for Antigravity, .claude/ for
+    Claude Code). The runtime scripts and session state dirs live inside that root.
+    """
     results = []
+    root_dir = project_root / runtime_root
     for label, path in (
-        ("session_state", project_root / ".agent" / "session_state"),
-        ("loop_state", project_root / ".agent" / "loop_state"),
-        ("loop_state_archive", project_root / ".agent" / "loop_state_archive"),
+        ("session_state", root_dir / "session_state"),
+        ("loop_state", root_dir / "loop_state"),
+        ("loop_state_archive", root_dir / "loop_state_archive"),
     ):
         exists = path.exists()
         results.append({
-            "tool_id": "runtime",
+            "tool_id": tool_id,
             "name": "session_runtime",
             "target": f"dir:{path}",
             "ok": exists,
             "evidence": f"{label} dir present" if exists else f"{label} dir missing",
         })
     # Critical helper scripts
-    scripts_dir = project_root / ".agent" / "scripts"
+    scripts_dir = root_dir / "scripts"
     for script in ("worktree.py", "plan_dispatch.py", "session_manager.py", "loop_memory_sync.py", "memory_audit.py", "pre_task_audit.py", "ahd_session.py"):
         path = scripts_dir / script
         exists = path.exists()
         results.append({
-            "tool_id": "runtime",
+            "tool_id": tool_id,
             "name": "session_runtime",
             "target": f"script:{path}",
             "ok": exists,
@@ -99,12 +129,22 @@ def _verify_session_runtime(project_root: Path) -> list[dict]:
 def verify_all(project_root: str = ".") -> dict:
     results = []
     project_root_path = Path(project_root).resolve()
-    results.extend(_verify_session_runtime(project_root_path))
+
+    # First pass: detect tools and check per-tool session runtime dirs.
+    # Each tool's runtime root is tool-specific (e.g. .agents/ for Antigravity).
+    detected_adapters = []
     for tid in all_tool_ids():
         adapter = get_adapter(tid, project_root=project_root)
         det = adapter.detect()
         if not det.detected:
             continue
+        detected_adapters.append(adapter)
+        runtime_root = adapter._runtime_root_rel()
+        results.extend(_verify_session_runtime(project_root_path, runtime_root, tid))
+
+    # Second pass: per-tool entry file + asset verification + link checks.
+    for adapter in detected_adapters:
+        tid = adapter.tool_id
         checks = adapter.verify()
         for label, ok, evidence in checks:
             results.append({

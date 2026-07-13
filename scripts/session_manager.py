@@ -31,7 +31,7 @@ ACTIVE_STATUSES = {"in_progress", "crashed", "suspected_crashed"}
 
 def _count_active_sessions(root: Path) -> int:
     count = 0
-    session_dir = root / ".agent" / "session_state"
+    session_dir = ahd_session.get_config_root(root) / "session_state"
     if not session_dir.exists():
         return 0
     for f in session_dir.glob("*.json"):
@@ -85,7 +85,7 @@ def cmd_init(args: argparse.Namespace) -> int:
     ahd_session.write_session_state(sid, state, root, merge=False)
     # Also seed the current_session file (racy, best effort)
     try:
-        current_file = root / ".agent" / "session_state" / "current_session"
+        current_file = ahd_session.get_config_root(root) / "session_state" / "current_session"
         current_file.write_text(sid, encoding="utf-8")
     except Exception:
         pass
@@ -123,7 +123,7 @@ def cmd_status(args: argparse.Namespace) -> int:
 def cmd_sync(args: argparse.Namespace) -> int:
     """Call loop_memory_sync.py to regenerate loop_state.md."""
     root = ahd_session.get_repo_root()
-    for script_dir in (root / ".agent" / "scripts", root / "scripts"):
+    for script_dir in (ahd_session.get_config_root(root) / "scripts", root / "scripts"):
         candidate = script_dir / "loop_memory_sync.py"
         if candidate.exists():
             import subprocess

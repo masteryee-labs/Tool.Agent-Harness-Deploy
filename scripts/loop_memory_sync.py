@@ -102,7 +102,7 @@ def _mark_stale_sessions(root: Path, sessions: list[dict]) -> None:
 
 def _build_registry(root: Path) -> tuple[list[dict], list[dict]]:
     """Build active/recent session list from session_state/*.json."""
-    session_dir = root / ".agent" / "session_state"
+    session_dir = ahd_session.get_config_root(root) / "session_state"
     state_files = []
     if session_dir.exists():
         for f in session_dir.glob("*.json"):
@@ -174,16 +174,16 @@ def _enforce_active_session_limit(root: Path, sessions: list[dict]) -> list[dict
 
 def _archive_session(root: Path, session_id: str, body: str, front: dict) -> None:
     """Move a completed per-session loop_state md to archive."""
-    archive_dir = root / ".agent" / "loop_state_archive"
+    archive_dir = ahd_session.get_config_root(root) / "loop_state_archive"
     archive_dir.mkdir(parents=True, exist_ok=True)
-    src = root / ".agent" / "loop_state" / f"{session_id}.md"
+    src = ahd_session.get_config_root(root) / "loop_state" / f"{session_id}.md"
     dst = archive_dir / f"{session_id}.md"
     if src.exists():
         shutil.copy2(src, dst)
         src.unlink()
 
     # Append summary to archive
-    archive_md = root / ".agent" / "loop_state_archive.md"
+    archive_md = ahd_session.get_config_root(root) / "loop_state_archive.md"
     try:
         ts = ahd_session.now_utc()
         goal = front.get("goal", "") or ""
@@ -196,7 +196,7 @@ def _archive_session(root: Path, session_id: str, body: str, front: dict) -> Non
 
 def _cleanup_loop_state_dir(root: Path, status_map: dict) -> None:
     """Archive oldest completed loop_state files if directory exceeds limit."""
-    loop_dir = root / ".agent" / "loop_state"
+    loop_dir = ahd_session.get_config_root(root) / "loop_state"
     if not loop_dir.exists():
         return
     files = [f for f in loop_dir.glob("*.md") if f.stem not in ("", "loop_state")]
@@ -251,7 +251,7 @@ def regenerate(root: Path, session_id: str = "", status: str = "") -> None:
         context_fill_pct = active[0].get("context_fill_pct", 0)
         caveman_level = active[0].get("caveman_level", "full")
 
-    registry_path = root / ".agent" / "loop_state.md"
+    registry_path = ahd_session.get_config_root(root) / "loop_state.md"
     registry_path.parent.mkdir(parents=True, exist_ok=True)
 
     lines = ["---"]
@@ -315,7 +315,7 @@ def regenerate(root: Path, session_id: str = "", status: str = "") -> None:
     # Build status map for loop_state cleanup
     status_map = {s.get("session_id", ""): s.get("status", "") for s in sessions}
     completed_sids = {s.get("session_id", "") for s in recent}
-    loop_dir = root / ".agent" / "loop_state"
+    loop_dir = ahd_session.get_config_root(root) / "loop_state"
     if loop_dir.exists():
         for f in loop_dir.glob("*.md"):
             sid = f.stem
@@ -330,15 +330,15 @@ def regenerate(root: Path, session_id: str = "", status: str = "") -> None:
     for s in sessions:
         if s.get("status") == "completed" and s.get("session_id", "") not in completed_sids:
             sid = s.get("session_id", "")
-            ss = root / ".agent" / "session_state" / f"{sid}.json"
+            ss = ahd_session.get_config_root(root) / "session_state" / f"{sid}.json"
             if ss.exists():
                 # Move to archive
-                archive_dir = root / ".agent" / "loop_state_archive"
+                archive_dir = ahd_session.get_config_root(root) / "loop_state_archive"
                 archive_dir.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(ss, archive_dir / f"{sid}.json")
                 ss.unlink()
             # Also remove per-session runtime directory (journal, candidate_memory, etc.)
-            ss_dir = root / ".agent" / "session_state" / sid
+            ss_dir = ahd_session.get_config_root(root) / "session_state" / sid
             if ss_dir.exists():
                 shutil.rmtree(ss_dir, ignore_errors=True)
 

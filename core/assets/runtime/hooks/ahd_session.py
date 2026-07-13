@@ -20,17 +20,46 @@ from pathlib import Path
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
-_LOCK_RELPATH = ".agent/tmp/ahd_session.lock"
+def get_config_root(root: Path) -> Path:
+    """Determine the config root directory for runtime state files.
+
+    When deployed, this file lives at ``<config_root>/scripts/ahd_session.py`` or
+    ``<config_root>/hooks/ahd_session.py``. The config root is ``parent.parent``.
+    In the source repo (``core/assets/runtime/hooks/ahd_session.py``) the parent.parent
+    is ``core/assets/runtime/`` which is NOT a config root, so we fall back to
+    ``root / ".agent"``.
+
+    This is what makes the harness work across tools with different config roots:
+    Antigravity uses ``.agents/``, Claude Code uses ``.claude/``, Codex uses
+    ``.codex/``, etc. The canonical text references ``.agent/`` as a placeholder;
+    at runtime this function resolves it to the actual deployed config root.
+    """
+    here = Path(__file__).resolve()
+    parent_name = here.parent.name
+    if parent_name in ("scripts", "hooks"):
+        candidate = here.parent.parent
+        # Distinguish a deployed config root from the source-repo
+        # core/assets/runtime/ directory. A deployed config root has
+        # session_state/ or loop_state/ siblings (created by _sync_runtime).
+        # The source-repo core/assets/runtime/ does not.
+        if (candidate / "session_state").is_dir() or (candidate / "loop_state").is_dir():
+            return candidate
+    return root / ".agent"
+
+
+def _lock_relpath(root: Path) -> Path:
+    """Return the lock file path relative to the config root."""
+    return get_config_root(root) / "tmp" / "ahd_session.lock"
 
 
 def get_repo_root(start_from: Optional[Path] = None) -> Path:
     """Find the main repo root.
 
     1. Try git rev-parse --show-toplevel.
-    2. Walk up from start_from (default cwd) for .git, .agent, AGENTS.md, pyproject.toml, README.md.
+    2. Walk up from start_from (default cwd) for .git, .agent, .agents, AGENTS.md, pyproject.toml, README.md.
     3. Fallback to cwd.
     """
-    cwd = start_from or Path.cwd()
+    cwd = Path(start_from) if start_from else Path.cwd()
     try:
         r = subprocess.run(
             ["git", "rev-parse", "--show-toplevel"],
@@ -41,7 +70,7 @@ def get_repo_root(start_from: Optional[Path] = None) -> Path:
     except Exception:
         pass
     for parent in [cwd, *cwd.parents]:
-        for marker in (".git", ".agent", "AGENTS.md", "pyproject.toml", "README.md"):
+        for marker in (".git", ".agent", ".agents", "AGENTS.md", "pyproject.toml", "README.md"):
             if (parent / marker).exists():
                 return parent
     return cwd
@@ -81,7 +110,7 @@ def get_session_id(data: Optional[Dict[str, Any]] = None, env_prefix: str = "AHD
     # Racy fallback: read current_session file
     try:
         root = get_repo_root()
-        current_file = root / ".agent" / "session_state" / "current_session"
+        current_file = get_config_root(root) / "session_state" / "current_session"
         if current_file.exists():
             sid = current_file.read_text(encoding="utf-8").strip()
             if sid:
@@ -95,24 +124,24 @@ def get_session_id(data: Optional[Dict[str, Any]] = None, env_prefix: str = "AHD
 def get_session_state_path(session_id: str, root: Optional[Path] = None) -> Path:
     """Return path to session_state JSON."""
     root = root or get_repo_root()
-    return root / ".agent" / "session_state" / f"{slugify_session_id(session_id)}.json"
+    return get_config_root(root) / "session_state" / f"{slugify_session_id(session_id)}.json"
 
 
 def get_context_flags_path(session_id: str, root: Optional[Path] = None) -> Path:
     """Return per-session context_flags path."""
     root = root or get_repo_root()
-    return root / ".agent" / "context_flags" / f"{slugify_session_id(session_id)}.json"
+    return get_config_root(root) / "context_flags" / f"{slugify_session_id(session_id)}.json"
 
 
 def get_loop_state_path(session_id: str, root: Optional[Path] = None) -> Path:
     """Return per-session loop_state markdown path."""
     root = root or get_repo_root()
-    return root / ".agent" / "loop_state" / f"{slugify_session_id(session_id)}.md"
+    return get_config_root(root) / "loop_state" / f"{slugify_session_id(session_id)}.md"
 
 
 def _get_lock_path(root: Path) -> Path:
     """Return a lock file path for the repo."""
-    return root / _LOCK_RELPATH
+    return _lock_relpath(root)
 
 
 def _acquire_lock(lock_path: Path, timeout: float = 10.0) -> Any:

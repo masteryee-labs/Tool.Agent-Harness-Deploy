@@ -82,11 +82,11 @@ def _get_repo_root() -> Path:
 
 ROOT = _get_repo_root()
 
-# Worktree script location: prefer the deployer repo's scripts/, then .agent/scripts/
+# Worktree script location: prefer the deployer repo's scripts/, then <config_root>/scripts/
 if (ROOT / "scripts" / "worktree.py").exists():
     WORKTREE_SCRIPT = ROOT / "scripts" / "worktree.py"
 else:
-    WORKTREE_SCRIPT = ROOT / ".agent" / "scripts" / "worktree.py"
+    WORKTREE_SCRIPT = ahd_session.get_config_root(ROOT) / "scripts" / "worktree.py"
 
 # Nuwa's 3 cognitive angles (from Docs/Agents/nuwa.md)
 NUWA_ANGLES = {
@@ -233,7 +233,7 @@ def _suggest_nuwa_angles(st: dict) -> list[str]:
 def _get_active_sessions(root: Path) -> list[dict]:
     """Read loop_state.md registry and return active session metadata."""
     sessions = []
-    registry = root / ".agent" / "loop_state.md"
+    registry = ahd_session.get_config_root(root) / "loop_state.md"
     if not registry.exists():
         return sessions
     # Very tolerant: look for "| <sid> | ... | active |" or "| in_progress |"
@@ -252,7 +252,7 @@ def _get_active_sessions(root: Path) -> list[dict]:
             sid = parts[0]
             if sid in ("session_id", "---"):
                 continue
-            ss = root / ".agent" / "session_state" / f"{sid}.json"
+            ss = ahd_session.get_config_root(root) / "session_state" / f"{sid}.json"
             if ss.exists():
                 try:
                     data = json.loads(ss.read_text(encoding="utf-8"))

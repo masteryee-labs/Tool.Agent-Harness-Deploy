@@ -325,12 +325,14 @@ class BaseAdapter:
                 target = self.project_root / mcp_file_rel
                 results.append(self._merge_mcp(target, template_path, mcp_format))
 
-        # 4. Copy runtime helper scripts to .agent/scripts/ and seed session runtime dirs
+        # 4. Copy runtime helper scripts to <runtime_root>/scripts/ and seed session runtime dirs
         #    These are needed by the orchestrator prompts regardless of tool-specific hooks.
-        scripts_dir = self.project_root / ".agent" / "scripts"
+        #    Runtime root is tool-specific (e.g. .agents/ for Antigravity, .claude/ for Claude Code).
+        runtime_root = self._runtime_root_rel()
+        scripts_dir = self.project_root / runtime_root / "scripts"
         scripts_dir.mkdir(parents=True, exist_ok=True)
         for subdir in ("session_state", "loop_state", "loop_state_archive", "context_flags"):
-            (self.project_root / ".agent" / subdir).mkdir(parents=True, exist_ok=True)
+            (self.project_root / runtime_root / subdir).mkdir(parents=True, exist_ok=True)
 
         for script_name in (
             "worktree.py", "plan_dispatch.py", "session_manager.py",
@@ -481,6 +483,23 @@ class BaseAdapter:
                 return root + "/"
         return None
 
+    def _runtime_root_rel(self) -> str:
+        """Return the directory (relative to project root) for runtime scripts and
+        session state dirs.
+
+        Defaults to the tool's config root (e.g. ``.agents`` for Antigravity,
+        ``.claude`` for Claude Code). Falls back to ``.agent`` if no config root
+        can be determined (e.g. Claude Desktop, which is global-only).
+
+        This is what fixes the ``.agent`` vs ``.agents`` issue: Antigravity expects
+        ``.agents/`` but the deployer was hardcoding ``.agent/`` for runtime scripts
+        and session state dirs, making the deployed project unusable.
+        """
+        cfg_root = self._config_root_rel()
+        if cfg_root:
+            return cfg_root.rstrip("/")
+        return ".agent"
+
     def _path_replacements(self) -> list[tuple[str, str]]:
         """Build source -> deployed path replacements for this tool.
 
@@ -512,15 +531,23 @@ class BaseAdapter:
             nuwa_dir = vault_base.replace("\\", "/").rstrip("/") + "/nuwa-skill/"
             reps.append(("core/assets/vault/", vault_dir))
             reps.append(("core/assets/skills/nuwa-skill/", nuwa_dir))
-        # Runtime helper scripts
-        reps.append(("scripts/worktree.py", ".agent/scripts/worktree.py"))
-        reps.append(("scripts/plan_dispatch.py", ".agent/scripts/plan_dispatch.py"))
-        reps.append(("scripts/session_manager.py", ".agent/scripts/session_manager.py"))
-        reps.append(("scripts/loop_memory_sync.py", ".agent/scripts/loop_memory_sync.py"))
-        reps.append(("scripts/memory_audit.py", ".agent/scripts/memory_audit.py"))
-        reps.append(("scripts/pre_task_audit.py", ".agent/scripts/pre_task_audit.py"))
+        # Runtime helper scripts → <runtime_root>/scripts/
+        runtime_root = self._runtime_root_rel()
+        scripts_dst = runtime_root + "/scripts/"
+        reps.append(("scripts/worktree.py", scripts_dst + "worktree.py"))
+        reps.append(("scripts/plan_dispatch.py", scripts_dst + "plan_dispatch.py"))
+        reps.append(("scripts/session_manager.py", scripts_dst + "session_manager.py"))
+        reps.append(("scripts/loop_memory_sync.py", scripts_dst + "loop_memory_sync.py"))
+        reps.append(("scripts/memory_audit.py", scripts_dst + "memory_audit.py"))
+        reps.append(("scripts/pre_task_audit.py", scripts_dst + "pre_task_audit.py"))
         # Hook helper
-        reps.append(("core/assets/runtime/hooks/ahd_session.py", ".agent/scripts/ahd_session.py"))
+        reps.append(("core/assets/runtime/hooks/ahd_session.py", scripts_dst + "ahd_session.py"))
+        # Runtime state directory: rewrite canonical .agent/ placeholder to the
+        # tool's actual config root. This covers all canon text references like
+        # .agent/loop_state.md, .agent/session_state/, .agent/knowledge_distill.md, etc.
+        # Only added when the runtime root differs from the placeholder.
+        if runtime_root != ".agent":
+            reps.append((".agent/", runtime_root + "/"))
         return reps
 
     def _rewrite_text(self, text: str) -> str:
@@ -714,7 +741,8 @@ class BaseAdapter:
                         "nuwa-skill present" if exists else "nuwa-skill missing"))
 
         # Runtime helper scripts check
-        scripts_dir = self.project_root / ".agent" / "scripts"
+        runtime_root = self._runtime_root_rel()
+        scripts_dir = self.project_root / runtime_root / "scripts"
         for script_name in (
             "worktree.py", "plan_dispatch.py", "session_manager.py",
             "loop_memory_sync.py", "memory_audit.py", "ahd_session.py"
@@ -725,8 +753,8 @@ class BaseAdapter:
                         "helper script present" if exists else "helper script missing"))
 
         # Session state directory check
-        session_state_dir = self.project_root / ".agent" / "session_state"
-        loop_state_dir = self.project_root / ".agent" / "loop_state"
+        session_state_dir = self.project_root / runtime_root / "session_state"
+        loop_state_dir = self.project_root / runtime_root / "loop_state"
         for label, d in (("session_state", session_state_dir), ("loop_state", loop_state_dir)):
             out.append((f"runtime:{d}", d.exists(), f"{label} dir present" if d.exists() else f"{label} dir missing"))
 
