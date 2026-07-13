@@ -55,7 +55,7 @@ Can't write positive/negative examples? Criterion too vague → escalate to huma
 | | Example |
 |---|---------|
 | **Question** | Does this modify state in a way that can't be undone via .bak or git? |
-| **Positive** | "About to run `rm -rf .agent/` — no .bak, no git tracking." |
+| **Positive** | "About to run `rm -rf .agents/` — no .bak, no git tracking." |
 | **Negative** | "About to overwrite CLAUDE.md — .bak will be created first." |
 | **Action +** | STOP. Ask human. No exceptions. |
 | **Action −** | Proceed (backup first per Red Line #1). |
@@ -87,7 +87,7 @@ Can't write positive/negative examples? Criterion too vague → escalate to huma
 | **Question** | Is there an active, crashed, or suspected-crashed session whose `owned_files`/`affected_files`/`tags` overlap the new task? |
 | **Positive** | "Session `s-20260709-abc` is `suspected_crashed` on `current_subtask: add file lock to base.py`. New task is `fix sync.py concurrency` and `owned_files` lists `scripts/sync.py` and `adapters/base.py`." |
 | **Negative** | "No active sessions, or active session `s-xyz` owns `Docs/Agents/nuwa.md` while new task is `scripts/distill.py` with no file/tag overlap." |
-| **Action +** | STOP. Read `.agent/loop_state/<session_id>.md` and `.agent/session_state/<session_id>.json`. Ask the human: "Session `s-xxx` was interrupted at `<current_subtask>`. Continue it, or start new?" |
+| **Action +** | STOP. Read `.agents/loop_state/<session_id>.md` and `.agents/session_state/<session_id>.json`. Ask the human: "Session `s-xxx` was interrupted at `<current_subtask>`. Continue it, or start new?" |
 | **Action −** | Start a new session with a fresh `session_id`; keep the old session in `active_sessions` unless it is completed. |
 
 ## How to use
@@ -156,7 +156,7 @@ When the agent MUST stop and escalate. These trip automatically.
 | ID | Question | Positive | Negative | Action |
 |----|----------|----------|----------|--------|
 | R-HE1 | Taste/aesthetic/ambiguous judgment? | "Clean UI" — no spec, 3 valid designs | Backup feature — spec clear, criteria deterministic | +: STOP. Present options to human. Don't pick. |
-| R-HE2 | Destructive without undo? | `rm -rf .agent/` — no .bak, no git | Overwrite CLAUDE.md — .bak created first | +: STOP. Ask human. No exceptions. |
+| R-HE2 | Destructive without undo? | `rm -rf .agents/` — no .bak, no git | Overwrite CLAUDE.md — .bak created first | +: STOP. Ask human. No exceptions. |
 | R-HE3 | Max retries exceeded? | 2 retries, same error persists | 1 retry, syntax error fixed | +: STOP. Escalate with full failure trace. |
 | R-HE4 | Outside deploy contract? | "幫我部屬" + "also refactor my codebase" | "幫我部屬" and nothing else | +: Acknowledge deploy, flag out-of-contract request. |
 | R-HE5 | About to modify canon? | Wants to "improve" CAVEMAN_PROTOCOL.md | Editing generated entry file via deployer | +: STOP. Canon modification = human approval (Red Line #12). |

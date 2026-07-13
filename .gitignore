@@ -17,20 +17,19 @@ verify_out.txt
 # The entire generated tool directories are ignored — they are per-machine deploy targets,
 # not source. The source lives in distill/ and core/. Re-run `python scripts/distill.py` to
 # regenerate them on any machine.
-.agent/
 .agents/
 
 # Session runtime state (managed by session hooks)
-.agent/loop_state/
-.agent/loop_state.md
-.agent/session_state/
-.agent/handoff_letter.md
-.agent/tool_log.jsonl
-.agent/tool_log.*.jsonl
-.agent/context_flags*.json
-.agent/context_flags/
-.agent/candidate_memory.jsonl
-.agent/tmp/
+.agents/loop_state/
+.agents/loop_state.md
+.agents/session_state/
+.agents/handoff_letter.md
+.agents/tool_log.jsonl
+.agents/tool_log.*.jsonl
+.agents/context_flags*.json
+.agents/context_flags/
+.agents/candidate_memory.jsonl
+.agents/tmp/
 
 # Parallel worktrees
 .worktrees/

@@ -143,7 +143,7 @@ Tool.Agent-Harness-Deploy/
 ├── distill/                   # canon/ · orchestrator/ · skills/
 ├── adapters/                  # Tool adapters + registry.json
 ├── scripts/                   # detect, distill, sync, verify, deploy, worktree, plan_dispatch
-└── .agent/                    # The deployer's own harness (dogfooded)
+└── .agents/                    # The deployer's own harness (dogfooded)
 ```
 
 See [`Docs/00-Overview.md`](Docs/00-Overview.md) for detailed directory descriptions.

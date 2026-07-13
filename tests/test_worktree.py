@@ -55,7 +55,7 @@ def test_worktree_prefix_and_session_state_sync():
 
         assert expected_path.exists(), f"expected worktree path not found: {expected_path}"
 
-        state_path = tmp / ".agent" / "session_state" / f"{session_id}.json"
+        state_path = tmp / ".agents" / "session_state" / f"{session_id}.json"
         assert state_path.exists(), f"session_state not written: {state_path}"
         data = json.loads(state_path.read_text(encoding="utf-8"))
         assert expected_wid in data.get("worktrees", []), f"worktrees not updated: {data}"

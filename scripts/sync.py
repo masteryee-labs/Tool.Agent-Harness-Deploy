@@ -112,7 +112,7 @@ def regenerate_repo_entry(body: str) -> None:
 def sync_all(project_root: str = ".", global_too: bool = False,
              only_tools: list[str] | None = None, lock: bool = True) -> int:
     project_root_path = Path(project_root).resolve()
-    lock_path = project_root_path / ".agent" / ".agent_harness_deploy.lock"
+    lock_path = project_root_path / ".agents" / ".agent_harness_deploy.lock"
     acquired = None
     if lock and FileLock:
         acquired = FileLock(str(lock_path))

@@ -75,7 +75,7 @@ Agent Harness Deploy is a *deployer*, not a product. The product is the harness 
 - `verify()` marker check looks for "Agent Harness Deploy" (case-insensitive). Rename project → update base.py too.
 
 ### Obvious to me, not to you
-- `.agent/` = deployer dogfooding itself. Not a template for what gets synced.
+- `.agents/` = deployer dogfooding itself. Not a template for what gets synced.
 - `Docs/02-Deployment-Guide.md` is the only Doc BOOT mandates reading. Rest are on-demand.
 
 ### Unfinished

@@ -27,11 +27,11 @@ def get_config_root(root: Path) -> Path:
     ``<config_root>/hooks/ahd_session.py``. The config root is ``parent.parent``.
     In the source repo (``core/assets/runtime/hooks/ahd_session.py``) the parent.parent
     is ``core/assets/runtime/`` which is NOT a config root, so we fall back to
-    ``root / ".agent"``.
+    ``root / ".agents"``.
 
     This is what makes the harness work across tools with different config roots:
     Antigravity uses ``.agents/``, Claude Code uses ``.claude/``, Codex uses
-    ``.codex/``, etc. The canonical text references ``.agent/`` as a placeholder;
+    ``.codex/``, etc. The canonical text references ``.agents/`` as a placeholder;
     at runtime this function resolves it to the actual deployed config root.
     """
     here = Path(__file__).resolve()
@@ -44,7 +44,7 @@ def get_config_root(root: Path) -> Path:
         # The source-repo core/assets/runtime/ does not.
         if (candidate / "session_state").is_dir() or (candidate / "loop_state").is_dir():
             return candidate
-    return root / ".agent"
+    return root / ".agents"
 
 
 def _lock_relpath(root: Path) -> Path:
@@ -56,7 +56,7 @@ def get_repo_root(start_from: Optional[Path] = None) -> Path:
     """Find the main repo root.
 
     1. Try git rev-parse --show-toplevel.
-    2. Walk up from start_from (default cwd) for .git, .agent, .agents, AGENTS.md, pyproject.toml, README.md.
+    2. Walk up from start_from (default cwd) for .git, .agents, AGENTS.md, pyproject.toml, README.md.
     3. Fallback to cwd.
     """
     cwd = Path(start_from) if start_from else Path.cwd()
@@ -70,7 +70,7 @@ def get_repo_root(start_from: Optional[Path] = None) -> Path:
     except Exception:
         pass
     for parent in [cwd, *cwd.parents]:
-        for marker in (".git", ".agent", ".agents", "AGENTS.md", "pyproject.toml", "README.md"):
+        for marker in (".git", ".agents", "AGENTS.md", "pyproject.toml", "README.md"):
             if (parent / marker).exists():
                 return parent
     return cwd
@@ -95,7 +95,7 @@ def get_session_id(data: Optional[Dict[str, Any]] = None, env_prefix: str = "AHD
 
     1. tool input `data["session_id"]`
     2. env var `{env_prefix}_SESSION_ID`
-    3. file `.agent/session_state/current_session`
+    3. file `.agents/session_state/current_session`
     4. UUID
     """
     data = data or {}

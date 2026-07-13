@@ -144,7 +144,7 @@ Tool.Agent-Harness-Deploy/
 ├── distill/                   # canon/ · orchestrator/ · skills/
 ├── adapters/                  # 工具 adapter + registry.json
 ├── scripts/                   # detect、distill、sync、verify、deploy、worktree、plan_dispatch
-└── .agent/                    # 部署器自己的工作环境（自己用自己）
+└── .agents/                    # 部署器自己的工作环境（自己用自己）
 ```
 
 详见 [`Docs/00-Overview.md`](Docs/00-Overview.md) 的目录说明。

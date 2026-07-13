@@ -8,10 +8,10 @@ Exit codes:
   0 = success (always — post-hooks never block)
 
 Writes per-session:
-- .agent/session_state/<session_id>.json — heartbeat, last_tool, last_file
-- .agent/session_state/<session_id>/candidate_memory.jsonl — repeated failure patterns
-- .agent/context_flags/<session_id>.json — context_oversized flag
-- .agent/session_state/<session_id>/journal.jsonl — audit trail
+- .agents/session_state/<session_id>.json — heartbeat, last_tool, last_file
+- .agents/session_state/<session_id>/candidate_memory.jsonl — repeated failure patterns
+- .agents/context_flags/<session_id>.json — context_oversized flag
+- .agents/session_state/<session_id>/journal.jsonl — audit trail
 
 This creates a persistent audit trail and helps the harness avoid the context dumb zone.
 """
@@ -232,7 +232,7 @@ def main():
     ahd_session.update_session_state(session_id, update, root)
 
     # Write per-session journal
-    journal_path = root / ".agent" / "session_state" / session_id / "journal.jsonl"
+    journal_path = ahd_session.get_config_root(root) / "session_state" / session_id / "journal.jsonl"
     try:
         _rotate(journal_path)
         journal_entry = {
@@ -268,7 +268,7 @@ def main():
             fail_count = _repeated_failure_count(journal_path, tool_name, command, session_id)
             if fail_count >= 2:
                 candidate["session_id"] = session_id
-                candidate_path = root / ".agent" / "session_state" / session_id / "candidate_memory.jsonl"
+                candidate_path = ahd_session.get_config_root(root) / "session_state" / session_id / "candidate_memory.jsonl"
                 _append_bounded_jsonl(candidate_path, candidate)
     except Exception:
         pass

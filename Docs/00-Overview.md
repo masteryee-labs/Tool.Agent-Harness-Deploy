@@ -88,7 +88,7 @@ Tool.Agent-Harness-Deploy/
 │       └── chroma-hybrid-search/  # Deep-memory hybrid retrieval (BM25+vector+reranker)
 ├── adapters/                  # Per-tool config adapters + registry.json
 ├── scripts/                   # detect.py, distill.py, sync.py, verify.py, deploy.*
-└── .agent/                    # The deployer's own harness (dogfooded)
+└── .agents/                    # The deployer's own harness (dogfooded)
 ```
 
 ## Doc index

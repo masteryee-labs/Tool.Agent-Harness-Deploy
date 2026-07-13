@@ -40,7 +40,7 @@ def test_pre_task_audit_no_conflict():
         plan_dispatch.ROOT = tmp
         try:
             _setup_active_session(tmp, "s-existing", ["scripts/old.py"], ["docs"])
-            registry = tmp / ".agent" / "loop_state.md"
+            registry = tmp / ".agents" / "loop_state.md"
             registry.write_text(
                 "---\nactive_sessions: []\nactive_session: null\n---\n"
                 "## Active sessions\n| session_id | goal | status | tags | owned_files | last_heartbeat |\n"
@@ -64,7 +64,7 @@ def test_pre_task_audit_file_conflict():
         plan_dispatch.ROOT = tmp
         try:
             _setup_active_session(tmp, "s-existing", ["scripts/sync.py"], ["concurrency"])
-            registry = tmp / ".agent" / "loop_state.md"
+            registry = tmp / ".agents" / "loop_state.md"
             registry.write_text(
                 "---\nactive_sessions: []\nactive_session: null\n---\n"
                 "## Active sessions\n| session_id | goal | status | tags | owned_files | last_heartbeat |\n"
@@ -88,7 +88,7 @@ def test_pre_task_audit_tag_conflict():
         plan_dispatch.ROOT = tmp
         try:
             _setup_active_session(tmp, "s-existing", ["scripts/other.py"], ["concurrency"])
-            registry = tmp / ".agent" / "loop_state.md"
+            registry = tmp / ".agents" / "loop_state.md"
             registry.write_text(
                 "---\nactive_sessions: []\nactive_session: null\n---\n"
                 "## Active sessions\n| session_id | goal | status | tags | owned_files | last_heartbeat |\n"
@@ -112,7 +112,7 @@ def test_pre_task_audit_cli():
         plan_dispatch.ROOT = tmp
         try:
             _setup_active_session(tmp, "s-existing", ["scripts/sync.py"], ["concurrency"])
-            registry = tmp / ".agent" / "loop_state.md"
+            registry = tmp / ".agents" / "loop_state.md"
             registry.write_text(
                 "---\nactive_sessions: []\nactive_session: null\n---\n"
                 "## Active sessions\n| session_id | goal | status | tags | owned_files | last_heartbeat |\n"
@@ -147,7 +147,7 @@ def test_pre_task_audit_treats_stale_as_suspected_crashed():
             state["last_state_write"] = ""
             ahd_session.write_session_state("s-stale", state, tmp, merge=False)
 
-            registry = tmp / ".agent" / "loop_state.md"
+            registry = tmp / ".agents" / "loop_state.md"
             registry.write_text(
                 "---\nactive_sessions: []\nactive_session: null\n---\n"
                 "## Active sessions\n| session_id | goal | status | tags | owned_files | last_heartbeat |\n"

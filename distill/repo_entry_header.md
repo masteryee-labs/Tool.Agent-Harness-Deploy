@@ -22,7 +22,7 @@ your tools. Do not start building features. Do not refactor the deployer. Run th
 
 ## 1. BOOT protocol (order is mandatory)
 
-1. `read(".agent/loop_state.md")` — read the session registry (<3KB).
+1. `read(".agents/loop_state.md")` — read the session registry (<3KB).
    - If the file does not exist, create an empty registry:
      ```yaml
      ---
@@ -32,18 +32,18 @@ your tools. Do not start building features. Do not refactor the deployer. Run th
      active_session: null
      ---
      ```
-2. `read(".agent/knowledge_distill.md")` — load anti-patterns (<8KB).
-3. `read(".agent/user_profile.md")` — load profile (<2KB).
-4. If `.agent/loop_state.md` has an `active_session` that is `in_progress`, `crashed`, or `suspected_crashed`,
-   `read(".agent/session_state/<session_id>.json")` and `.agent/loop_state/<session_id>.md` **only for audit**.
+2. `read(".agents/knowledge_distill.md")` — load anti-patterns (<8KB).
+3. `read(".agents/user_profile.md")` — load profile (<2KB).
+4. If `.agents/loop_state.md` has an `active_session` that is `in_progress`, `crashed`, or `suspected_crashed`,
+   `read(".agents/session_state/<session_id>.json")` and `.agents/loop_state/<session_id>.md` **only for audit**.
    Do not read all `session_state/*.json` or `loop_state/*.md` files. If the previous session's
    `owned_files`/`affected_files`/`tags` overlap the new task, ask the human whether to continue.
    **Never auto-resume.**
-5. Read per-session context flags — `.agent/context_flags/<session_id>.json` if it exists.
+5. Read per-session context flags — `.agents/context_flags/<session_id>.json` if it exists.
 6. Output a GoalSpec (see `distill/canon/BOOT_PROTOCOL.md`) and write it to:
-   - `.agent/loop_state/<session_id>.md`
-   - `.agent/session_state/<session_id>.json`
-7. Call `python scripts/loop_memory_sync.py` to update `.agent/loop_state.md` registry.
+   - `.agents/loop_state/<session_id>.md`
+   - `.agents/session_state/<session_id>.json`
+7. Call `python scripts/loop_memory_sync.py` to update `.agents/loop_state.md` registry.
 8. Read `Docs/02-Deployment-Guide.md` — the exact deploy flow.
 9. Run the deployer: `python scripts/distill.py` (or follow `Docs/02-Deployment-Guide.md §Manual deploy`).
 

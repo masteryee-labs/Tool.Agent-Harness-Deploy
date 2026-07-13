@@ -37,7 +37,7 @@ def test_post_tool_use_writes_session_state():
         r = run_hook(payload, cwd)
         assert r.returncode == 0, r.stderr
 
-        state_path = cwd / ".agent" / "session_state" / "s-abc123.json"
+        state_path = cwd / ".agents" / "session_state" / "s-abc123.json"
         assert state_path.exists(), "session_state json not created"
         data = json.loads(state_path.read_text(encoding="utf-8"))
         assert data["session_id"] == "s-abc123"
@@ -59,7 +59,7 @@ def test_post_tool_use_redacts_command():
         r = run_hook(payload, cwd)
         assert r.returncode == 0, r.stderr
 
-        journal_path = cwd / ".agent" / "session_state" / "s-redact" / "journal.jsonl"
+        journal_path = cwd / ".agents" / "session_state" / "s-redact" / "journal.jsonl"
         assert journal_path.exists()
         lines = journal_path.read_text(encoding="utf-8").strip().splitlines()
         assert lines
@@ -86,7 +86,7 @@ def test_post_tool_use_candidate_memory():
         r = run_hook(payload, cwd)
         assert r.returncode == 0, r.stderr
 
-        candidate_path = cwd / ".agent" / "session_state" / "s-candidate" / "candidate_memory.jsonl"
+        candidate_path = cwd / ".agents" / "session_state" / "s-candidate" / "candidate_memory.jsonl"
         assert candidate_path.exists()
         lines = candidate_path.read_text(encoding="utf-8").strip().splitlines()
         assert lines

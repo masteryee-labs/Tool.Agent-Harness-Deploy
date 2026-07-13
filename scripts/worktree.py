@@ -59,7 +59,7 @@ except ImportError:  # pragma: no cover
 
 
 def _get_repo_root() -> Path:
-    """Find the main repo root. Prefer git toplevel, then walk up for .git/.agent."""
+    """Find the main repo root. Prefer git toplevel, then walk up for .git/.agents."""
     return ahd_session.get_repo_root()
 
 

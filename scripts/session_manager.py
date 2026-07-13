@@ -16,7 +16,7 @@ import json
 import sys
 from pathlib import Path
 
-# Import ahd_session: in .agent/scripts/ it's in the same directory; in source
+# Import ahd_session: in .agents/scripts/ it's in the same directory; in source
 # scripts/ it lives under core/assets/runtime/hooks.
 try:
     import ahd_session

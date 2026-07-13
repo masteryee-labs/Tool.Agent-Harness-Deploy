@@ -19,10 +19,10 @@ Follow `distill/canon/MEMORY_PROTOCOL.md` for the full spec. Quick reference:
 
 | Action | Rule |
 |--------|------|
-| Read at BOOT | `.agent/loop_state.md` registry (<3KB) + `.agent/knowledge_distill.md` (<8KB) + `.agent/user_profile.md` (<2KB) + `.agent/context_flags/<session_id>.json` if exists. Only read the matching `loop_state/<session_id>.md` and `session_state/<session_id>.json` for audit/conflict. |
-| Iteration start | Set `.agent/session_state/<session_id>.json` `state_written` to `false`. |
-| Write every iteration | Update `.agent/loop_state/<session_id>.md` with date, phase, last_action, active GoalSpec, subtasks, deferred/human_required, `context_fill_pct`, `caveman_level`. Update `.agent/session_state/<session_id>.json` with `current_subtask`, `last_action`, `last_state_write`, `state_written: true`, `context_fill_pct`, `caveman_level`, `context_flags`, `owned_files`, `affected_files`, `tags`. Then call `python scripts/loop_memory_sync.py`. |
-| Distill when >8KB | Merge duplicate anti-patterns, abstract concrete cases into patterns, archive originals to `.agent/loop_state_archive.md`. Dispatch Memory Keeper if judgment needed. |
+| Read at BOOT | `.agents/loop_state.md` registry (<3KB) + `.agents/knowledge_distill.md` (<8KB) + `.agents/user_profile.md` (<2KB) + `.agents/context_flags/<session_id>.json` if exists. Only read the matching `loop_state/<session_id>.md` and `session_state/<session_id>.json` for audit/conflict. |
+| Iteration start | Set `.agents/session_state/<session_id>.json` `state_written` to `false`. |
+| Write every iteration | Update `.agents/loop_state/<session_id>.md` with date, phase, last_action, active GoalSpec, subtasks, deferred/human_required, `context_fill_pct`, `caveman_level`. Update `.agents/session_state/<session_id>.json` with `current_subtask`, `last_action`, `last_state_write`, `state_written: true`, `context_fill_pct`, `caveman_level`, `context_flags`, `owned_files`, `affected_files`, `tags`. Then call `python scripts/loop_memory_sync.py`. |
+| Distill when >8KB | Merge duplicate anti-patterns, abstract concrete cases into patterns, archive originals to `.agents/loop_state_archive.md`. Dispatch Memory Keeper if judgment needed. |
 | Micro-memory | Run `memory-audit` skill every 5 iterations or scope change. It invokes `python scripts/memory_audit.py --session <session_id>`. |
 | Cold layer | Append-only. Never edit; only archive. |
 | Secrets | Never write secrets/keys/API tokens to any layer. |
@@ -38,5 +38,5 @@ Follow `distill/canon/MEMORY_PROTOCOL.md` for the full spec. Quick reference:
 ## Optional: deep-memory
 
 If `~/.deep-memory/.venv` exists, run cross-project retrieval via `chroma-hybrid-search` skill.
-If not, set `deep_memory_offline: true` in `.agent/session_state/<session_id>.json`. Do not fabricate memory.
+If not, set `deep_memory_offline: true` in `.agents/session_state/<session_id>.json`. Do not fabricate memory.
 To bootstrap, run `python scripts/init_deep_memory.py`.

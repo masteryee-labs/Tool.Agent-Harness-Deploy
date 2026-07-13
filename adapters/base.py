@@ -342,7 +342,7 @@ class BaseAdapter:
             if src.is_file():
                 results.append(self._copy_file_with_rewrite(src, scripts_dir / script_name))
 
-        # 5. Copy ahd_session.py to .agent/scripts/ so scripts can import it
+        # 5. Copy ahd_session.py to .agents/scripts/ so scripts can import it
         ahd_src = ASSET_SOURCES["runtime"] / "hooks" / "ahd_session.py"
         if ahd_src.is_file():
             results.append(self._copy_file_with_rewrite(ahd_src, scripts_dir / "ahd_session.py"))
@@ -488,17 +488,17 @@ class BaseAdapter:
         session state dirs.
 
         Defaults to the tool's config root (e.g. ``.agents`` for Antigravity,
-        ``.claude`` for Claude Code). Falls back to ``.agent`` if no config root
+        ``.claude`` for Claude Code). Falls back to ``.agents`` if no config root
         can be determined (e.g. Claude Desktop, which is global-only).
 
-        This is what fixes the ``.agent`` vs ``.agents`` issue: Antigravity expects
-        ``.agents/`` but the deployer was hardcoding ``.agent/`` for runtime scripts
-        and session state dirs, making the deployed project unusable.
+        This is what fixes the config-root mismatch issue: Antigravity expects
+        ``.agents/`` but the deployer was previously hardcoding the wrong directory
+        for runtime scripts and session state dirs, making the deployed project unusable.
         """
         cfg_root = self._config_root_rel()
         if cfg_root:
             return cfg_root.rstrip("/")
-        return ".agent"
+        return ".agents"
 
     def _path_replacements(self) -> list[tuple[str, str]]:
         """Build source -> deployed path replacements for this tool.
@@ -542,12 +542,12 @@ class BaseAdapter:
         reps.append(("scripts/pre_task_audit.py", scripts_dst + "pre_task_audit.py"))
         # Hook helper
         reps.append(("core/assets/runtime/hooks/ahd_session.py", scripts_dst + "ahd_session.py"))
-        # Runtime state directory: rewrite canonical .agent/ placeholder to the
+        # Runtime state directory: rewrite canonical .agents/ placeholder to the
         # tool's actual config root. This covers all canon text references like
-        # .agent/loop_state.md, .agent/session_state/, .agent/knowledge_distill.md, etc.
+        # .agents/loop_state.md, .agents/session_state/, .agents/knowledge_distill.md, etc.
         # Only added when the runtime root differs from the placeholder.
-        if runtime_root != ".agent":
-            reps.append((".agent/", runtime_root + "/"))
+        if runtime_root != ".agents":
+            reps.append((".agents/", runtime_root + "/"))
         return reps
 
     def _rewrite_text(self, text: str) -> str:

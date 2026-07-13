@@ -1,6 +1,6 @@
 ---
 name: user-preference
-description: "Use at BOOT and whenever a user preference is discovered. Loads and updates .agent/user_profile.md to remember language, model tier, project type, and custom red lines."
+description: "Use at BOOT and whenever a user preference is discovered. Loads and updates .agents/user_profile.md to remember language, model tier, project type, and custom red lines."
 ---
 
 # Skill: user-preference
@@ -17,7 +17,7 @@ At BOOT and after any explicit preference statement.
 
 ## How
 
-1. Read `.agent/user_profile.md` if it exists.
+1. Read `.agents/user_profile.md` if it exists.
 2. If it does not exist, create it from the template:
    ```yaml
    ---
@@ -43,7 +43,7 @@ At BOOT and after any explicit preference statement.
 ## Output
 ```
 ## User profile
-- loaded from: .agent/user_profile.md
+- loaded from: .agents/user_profile.md
 - updated: <fields>
 - active constraints: <list>
 ```

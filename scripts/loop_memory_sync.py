@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """loop_memory_sync.py — regenerate loop_state.md registry from session_state.
 
-This is the single machine writer of `.agent/loop_state.md`. It reads:
-- `.agent/session_state/*.json` for active session metadata
-- `.agent/loop_state/<session_id>.md` for human-readable GoalSpec and subtasks
+This is the single machine writer of `.agents/loop_state.md`. It reads:
+- `.agents/session_state/*.json` for active session metadata
+- `.agents/loop_state/<session_id>.md` for human-readable GoalSpec and subtasks
 
 It writes:
-- `.agent/loop_state.md` registry (active + recent 3 completed)
-- `.agent/loop_state_archive.md` event summaries for archived sessions
-- moves completed session files to `.agent/loop_state_archive/<session_id>.md`
+- `.agents/loop_state.md` registry (active + recent 3 completed)
+- `.agents/loop_state_archive.md` event summaries for archived sessions
+- moves completed session files to `.agents/loop_state_archive/<session_id>.md`
 """
 from __future__ import annotations
 
@@ -303,10 +303,10 @@ def regenerate(root: Path, session_id: str = "", status: str = "") -> None:
 
     lines.append("")
     lines.append("## Links")
-    lines.append("- knowledge_distill: .agent/knowledge_distill.md")
-    lines.append("- handoff_letter: .agent/handoff_letter.md")
-    lines.append("- session_archive: .agent/loop_state_archive.md")
-    lines.append("- session_archive_dir: .agent/loop_state_archive/")
+    lines.append("- knowledge_distill: .agents/knowledge_distill.md")
+    lines.append("- handoff_letter: .agents/handoff_letter.md")
+    lines.append("- session_archive: .agents/loop_state_archive.md")
+    lines.append("- session_archive_dir: .agents/loop_state_archive/")
 
     tmp = registry_path.with_suffix(".tmp")
     tmp.write_text("\n".join(lines) + "\n", encoding="utf-8")

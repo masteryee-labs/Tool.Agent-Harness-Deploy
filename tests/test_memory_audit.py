@@ -23,7 +23,7 @@ def test_memory_audit_merges_candidates():
         ahd_session.get_repo_root = lambda _=None: cwd
         try:
             sid = "s-memory"
-            ss_dir = cwd / ".agent" / "session_state" / sid
+            ss_dir = cwd / ".agents" / "session_state" / sid
             ss_dir.mkdir(parents=True)
             candidate_path = ss_dir / "candidate_memory.jsonl"
             candidate = {
@@ -36,7 +36,7 @@ def test_memory_audit_merges_candidates():
 
             memory_audit.run(cwd, sid)
 
-            knowledge = cwd / ".agent" / "knowledge_distill.md"
+            knowledge = cwd / ".agents" / "knowledge_distill.md"
             assert knowledge.exists()
             text = knowledge.read_text(encoding="utf-8")
             assert "test error" in text

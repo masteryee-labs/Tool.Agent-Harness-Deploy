@@ -32,7 +32,7 @@ def test_session_manager_init_and_status():
             rc = session_manager.cmd_init(args)
             assert rc == 0
 
-            state = json.loads((cwd / ".agent" / "session_state" / "s-manage.json").read_text(encoding="utf-8"))
+            state = json.loads((cwd / ".agents" / "session_state" / "s-manage.json").read_text(encoding="utf-8"))
             assert state["session_id"] == "s-manage"
             assert state["goal"] == "test"
             assert state["status"] == "in_progress"
@@ -41,7 +41,7 @@ def test_session_manager_init_and_status():
             rc = session_manager.cmd_status(args)
             assert rc == 0
 
-            state = json.loads((cwd / ".agent" / "session_state" / "s-manage.json").read_text(encoding="utf-8"))
+            state = json.loads((cwd / ".agents" / "session_state" / "s-manage.json").read_text(encoding="utf-8"))
             assert state["status"] == "completed"
             assert state["state_written"] is True
         finally:
@@ -64,7 +64,7 @@ def test_session_manager_heartbeat():
             rc = session_manager.cmd_heartbeat(args)
             assert rc == 0
 
-            state = json.loads((cwd / ".agent" / "session_state" / "s-hb.json").read_text(encoding="utf-8"))
+            state = json.loads((cwd / ".agents" / "session_state" / "s-hb.json").read_text(encoding="utf-8"))
             assert state["last_heartbeat"] != ""
         finally:
             ahd_session.get_repo_root = original
@@ -94,7 +94,7 @@ def test_session_manager_max_active_sessions():
             args = make_args(session_id="s-queued", goal="test", complexity="M", force=True)
             rc = session_manager.cmd_init(args)
             assert rc == 0, "4th session with --force should initialize as queued"
-            state = json.loads((cwd / ".agent" / "session_state" / "s-queued.json").read_text(encoding="utf-8"))
+            state = json.loads((cwd / ".agents" / "session_state" / "s-queued.json").read_text(encoding="utf-8"))
             assert state["status"] == "queued"
         finally:
             ahd_session.get_repo_root = original

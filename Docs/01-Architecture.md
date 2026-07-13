@@ -10,7 +10,7 @@
 3. **Non-destructive** — back up before overwrite; never silently clobber existing config.
 4. **Self-verifying** — every sync ends with a read-back verification.
 5. **Tool-agnostic canon** — the rules don't mention specific tools; adapters handle format.
-6. **Dogfooded** — the deployer ships with its own `.agent/` harness using the same canon.
+6. **Dogfooded** — the deployer ships with its own `.agents/` harness using the same canon.
 
 ## Layered architecture
 

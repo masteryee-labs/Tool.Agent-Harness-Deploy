@@ -8,7 +8,7 @@
 
 1. **Read entry file** — the file that brought you here (AGENTS.md / CLAUDE.md /
    instructions.md / .devin/AGENTS.md). It routes you to canon.
-2. **Ensure registry exists** — `.agent/loop_state.md` is the session registry.
+2. **Ensure registry exists** — `.agents/loop_state.md` is the session registry.
    If it does not exist, create an empty registry with front matter:
    ```yaml
    ---
@@ -17,13 +17,13 @@
    ---
    ```
    Do not write a `session_id` into the registry until the GoalSpec is finalized.
-3. **Read registry** — `.agent/loop_state.md` (<3KB). Inherit prior state:
+3. **Read registry** — `.agents/loop_state.md` (<3KB). Inherit prior state:
    `active_sessions`, `active_session`, and links to `knowledge_distill.md` and
    `handoff_letter.md`.
-4. **Read knowledge layer** — `.agent/knowledge_distill.md` (<8KB). Anti-patterns.
-5. **Read user profile** — `.agent/user_profile.md` (<2KB). Language, model tier,
+4. **Read knowledge layer** — `.agents/knowledge_distill.md` (<8KB). Anti-patterns.
+5. **Read user profile** — `.agents/user_profile.md` (<2KB). Language, model tier,
    project type, custom red lines.
-6. **Read handoff letter** — `.agent/handoff_letter.md` if it exists and `phase`
+6. **Read handoff letter** — `.agents/handoff_letter.md` if it exists and `phase`
    is `complete` or `last_update` is newer than the last known session.
 7. **Determine `session_id`** — choose or reuse a session ID:
    - Prefer a value supplied by the tool (`post_tool_use`/`stop` input or env var).
@@ -32,7 +32,7 @@
      session ID is reused **only after** the human confirms continuation.
    - Otherwise generate a new `session_id` (slug/UUID, max 64 chars, no `: / \`
      or spaces).
-8. **Read per-session context flags** — `.agent/context_flags/<session_id>.json`
+8. **Read per-session context flags** — `.agents/context_flags/<session_id>.json`
    if it exists. Carries `context_oversized` and any per-session signal.
 9. **Pre-task / crash audit** — run `python scripts/pre_task_audit.py --files <files> --tags <tags> --session <session_id>`:
    - It reads `session_state/<session_id>.json` for any session in `active_sessions`
@@ -45,8 +45,8 @@
      human whether to continue the previous session. **Never auto-resume.**
    - If no overlap, start a new session; the old session remains in the registry.
 10. **Read deploy guide** — `Docs/02-Deployment-Guide.md` (only if deploying).
-11. **Output GoalSpec** — write to `.agent/loop_state/<session_id>.md` and
-    `.agent/session_state/<session_id>.json`:
+11. **Output GoalSpec** — write to `.agents/loop_state/<session_id>.md` and
+    `.agents/session_state/<session_id>.json`:
     ```yaml
     session_id: "s-..."
     goal: "[one-line summary]"
@@ -65,7 +65,7 @@
     The machine-readable JSON in `session_state` must include `status: in_progress`,
     `state_written: false`, `last_state_write`, `last_heartbeat`, `owned_files`,
     `affected_files`, and `tags`.
-12. **Update registry** — append the new session to `.agent/loop_state.md` active
+12. **Update registry** — append the new session to `.agents/loop_state.md` active
     sessions table and set `active_session` to the new `session_id`. Then call
     `python scripts/loop_memory_sync.py` to regenerate the registry from the
     session state files.

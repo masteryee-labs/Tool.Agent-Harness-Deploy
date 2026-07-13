@@ -35,14 +35,14 @@ def test_loop_memory_sync_creates_registry():
             "complexity": "M",
             "last_heartbeat": "2026-07-09T10:00:00+00:00",
         }
-        ss_dir = cwd / ".agent" / "session_state"
+        ss_dir = cwd / ".agents" / "session_state"
         ss_dir.mkdir(parents=True)
         (ss_dir / "s-xyz.json").write_text(json.dumps(state), encoding="utf-8")
 
         r = run_sync(["--session", "s-xyz", "--status", "completed"], cwd)
         assert r.returncode == 0, r.stderr
 
-        registry = cwd / ".agent" / "loop_state.md"
+        registry = cwd / ".agents" / "loop_state.md"
         assert registry.exists()
         text = registry.read_text(encoding="utf-8")
         assert "s-xyz" in text
@@ -66,14 +66,14 @@ def test_loop_memory_sync_marks_stale_sessions():
             "last_heartbeat": "2000-01-01T00:00:00+00:00",
             "last_state_write": "",
         }
-        ss_dir = cwd / ".agent" / "session_state"
+        ss_dir = cwd / ".agents" / "session_state"
         ss_dir.mkdir(parents=True)
         (ss_dir / "s-stale.json").write_text(json.dumps(state), encoding="utf-8")
 
         r = run_sync([], cwd)
         assert r.returncode == 0, r.stderr
 
-        registry = cwd / ".agent" / "loop_state.md"
+        registry = cwd / ".agents" / "loop_state.md"
         assert registry.exists()
         text = registry.read_text(encoding="utf-8")
         assert "suspected_crashed" in text
@@ -88,7 +88,7 @@ def test_loop_memory_sync_enforces_max_active_sessions():
         cwd = Path(tmp)
         (cwd / ".git").mkdir()
 
-        ss_dir = cwd / ".agent" / "session_state"
+        ss_dir = cwd / ".agents" / "session_state"
         ss_dir.mkdir(parents=True)
         base = datetime.now(timezone.utc)
         for i in range(4):
@@ -107,7 +107,7 @@ def test_loop_memory_sync_enforces_max_active_sessions():
         r = run_sync([], cwd)
         assert r.returncode == 0, r.stderr
 
-        registry = cwd / ".agent" / "loop_state.md"
+        registry = cwd / ".agents" / "loop_state.md"
         text = registry.read_text(encoding="utf-8")
         assert "## Queued sessions" in text, text
         # The oldest (s-0) should be queued

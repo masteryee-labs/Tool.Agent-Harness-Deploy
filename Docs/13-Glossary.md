@@ -142,7 +142,7 @@ The concepts in this harness synthesize ideas from many sources. Key ones:
 | 80-word instruction experiment | 控制平面大課題 |
 | Control-plane pattern | Ryan Carson, Wisely Chen 見解 |
 | CLAUDE.md discipline | Karpathy's CLAUDE.md, Boris Cherny |
-| Cross-tool entry sync | Yee-World-Life `.agent/scripts/sync_cross_tool_entries.py` pattern |
+| Cross-tool entry sync | Yee-World-Life `.agents/scripts/sync_cross_tool_entries.py` pattern |
 | Skills format | Codex/Claude Code SKILL.md convention, obra/superpowers ("Use when..." pattern) |
 | Meta-skill enforcement | obra/superpowers `using-superpowers` pattern |
 | Worker frontmatter (color/emoji/services) | msitarzewski/agency-agents |

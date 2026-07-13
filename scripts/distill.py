@@ -36,7 +36,7 @@ from scripts.detect import detect_all  # noqa: E402
 from scripts.sync import sync_all  # noqa: E402
 from scripts.verify import verify_all  # noqa: E402
 
-_DEPLOY_LOCK = ROOT / ".agent" / ".agent_harness_deploy.lock"
+_DEPLOY_LOCK = ROOT / ".agents" / ".agent_harness_deploy.lock"
 
 
 def main() -> int:

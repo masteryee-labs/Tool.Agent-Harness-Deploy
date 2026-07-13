@@ -39,7 +39,7 @@ class LinkReport:
 # Roots we consider resolvable. The rest of the string is captured until a delimiter.
 _KNOWN_ROOTS = (
     r"distill/|core/|scripts/|Docs/|"
-    r"\.agent/|\.agents/|\.claude/|\.codex/|\.devin/|\.cursor/|"
+    r"\.agents/|\.claude/|\.codex/|\.devin/|\.cursor/|"
     r"\.open/|\.openclaw/|\.hermes/|\.zcode/|\.kimi/|\.opencode/"
 )
 
@@ -79,10 +79,10 @@ DEFAULT_ALLOWED_MISSING = [
     "distill/canon/",          # canonical directory references
     "core/assets/skills/nuwa-skill/",  # directory references
     "core/assets/vault/",      # vault directory references
-    ".agent/loop_state_archive.md",
-    ".agent/candidate_memory.jsonl",
-    ".agent/context_flags.json",
-    ".agent/knowledge_distill.md",
+    ".agents/loop_state_archive.md",
+    ".agents/candidate_memory.jsonl",
+    ".agents/context_flags.json",
+    ".agents/knowledge_distill.md",
 ]
 
 

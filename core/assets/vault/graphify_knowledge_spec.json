@@ -164,9 +164,9 @@
   },
   "build_and_refresh": {
     "trigger": "On first deploy, after significant code changes (>5 files modified), or on explicit request.",
-    "method": "Parse all source files per language rules → generate nodes and edges → serialize to JSON graph file at .agent/knowledge_graph.json",
+    "method": "Parse all source files per language rules → generate nodes and edges → serialize to JSON graph file at .agents/knowledge_graph.json",
     "incremental": "On file change, re-parse only the changed file and update its nodes/edges. Full rebuild only on explicit request or schema change.",
-    "storage": ".agent/knowledge_graph.json (cold layer, grep/query only, not read in full at BOOT)"
+    "storage": ".agents/knowledge_graph.json (cold layer, grep/query only, not read in full at BOOT)"
   },
   "honest_clause": "If the codebase uses a language not in parsing_rules, label the graph as 'partial — language X not parsed'. Do not fabricate edges for unparsed files. Report coverage percentage.",
   "integration_points": {

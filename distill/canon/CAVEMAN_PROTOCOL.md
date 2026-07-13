@@ -51,15 +51,15 @@ Context fill is a leading indicator of token waste. When the window fills, the m
 - A single `read` would exceed 50 lines → use `read` with `offset`/`limit` or `grep`.
 
 ### Automatic load
-- `post_tool_use.py` writes `context_oversized: true` to `.agent/context_flags/<session_id>.json` when a tool response is oversized.
-- `loop-memory` reads `.agent/context_flags/<session_id>.json` at the end of every iteration and updates `.agent/session_state/<session_id>.json` and `.agent/loop_state/<session_id>.md`.
-- `.agent/loop_state.md` registry front matter must include:
+- `post_tool_use.py` writes `context_oversized: true` to `.agents/context_flags/<session_id>.json` when a tool response is oversized.
+- `loop-memory` reads `.agents/context_flags/<session_id>.json` at the end of every iteration and updates `.agents/session_state/<session_id>.json` and `.agents/loop_state/<session_id>.md`.
+- `.agents/loop_state.md` registry front matter must include:
   ```yaml
   context_fill_pct: <0-100 estimate>
   caveman_level: <light|compact|full|ultra|wenyan>
   active_session: s-...
   ```
-- `.agent/loop_state/<session_id>.md` must include:
+- `.agents/loop_state/<session_id>.md` must include:
   ```yaml
   context_fill_pct: <0-100>
   caveman_level: <light|compact|full|ultra|wenyan>

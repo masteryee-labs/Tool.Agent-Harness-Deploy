@@ -14,13 +14,13 @@
   "core_principle": "Stateless agents forget between runs. The repository does not. Memory lives on disk, not in context.",
   "architecture": {
     "pattern": "Three-layer on-disk memory + optional deep-memory hybrid retrieval",
-    "storage_location": "filesystem (repo-local .agent/ + optional ~/.deep-memory/)",
+    "storage_location": "filesystem (repo-local .agents/ + optional ~/.deep-memory/)",
     "retrieval_method": "grep (hot/knowledge) + BM25+vector+reranker (deep-memory, if installed)"
   },
   "three_layers": [
     {
       "layer": "hot",
-      "file": ".agent/loop_state.md",
+      "file": ".agents/loop_state.md",
       "cap": "3KB",
       "boot": "required (read at BOOT)",
       "purpose": "Current state, active GoalSpec, subtask progress, current iteration",
@@ -47,7 +47,7 @@
     },
     {
       "layer": "knowledge",
-      "file": ".agent/knowledge_distill.md",
+      "file": ".agents/knowledge_distill.md",
       "cap": "8KB",
       "boot": "required (read at BOOT, grep for task-relevant anti-patterns)",
       "purpose": "Distilled anti-patterns, reusable lessons, failure modes",
@@ -63,7 +63,7 @@
     },
     {
       "layer": "cold",
-      "file": ".agent/loop_state_archive.md",
+      "file": ".agents/loop_state_archive.md",
       "cap": "unlimited",
       "boot": "never read in full — grep only",
       "purpose": "Full history, rotated state, archived distillation originals",

@@ -26,7 +26,7 @@ except ImportError:  # pragma: no cover
 try:
     from plan_dispatch import _expand_file_hints, _get_active_sessions
 except ImportError:
-    # In .agent/scripts/ we can import from the same directory
+    # In .agents/scripts/ we can import from the same directory
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from plan_dispatch import _expand_file_hints, _get_active_sessions
 

@@ -17,7 +17,7 @@ What it does:
      to archive session files and update loop_state.md registry.
   4. If crashed: runs loop_memory_sync to mark suspected_crashed without deleting.
   5. Appends a session-end marker to loop_state_archive.md.
-  6. Cleans temporary files older than 24h in .agent/tmp/.
+  6. Cleans temporary files older than 24h in .agents/tmp/.
 """
 import json
 import subprocess
@@ -32,8 +32,8 @@ SESSION_MARKER = "<!-- Agent Harness Deploy-stop-hook -->"
 
 
 def _call_script(root: Path, script: str, *args) -> None:
-    """Call a helper script in .agent/scripts/ or scripts/."""
-    for script_dir in (root / ".agent" / "scripts", root / "scripts"):
+    """Call a helper script in .agents/scripts/ or scripts/."""
+    for script_dir in (ahd_session.get_config_root(root) / "scripts", root / "scripts"):
         candidate = script_dir / script
         if candidate.exists():
             try:
@@ -69,8 +69,8 @@ def main():
     root = ahd_session.get_repo_root()
     ts = ahd_session.now_utc()
 
-    archive_path = root / ".agent" / "loop_state_archive.md"
-    tmp_dir = root / ".agent" / "tmp"
+    archive_path = ahd_session.get_config_root(root) / "loop_state_archive.md"
+    tmp_dir = ahd_session.get_config_root(root) / "tmp"
 
     session_state = ahd_session.read_session_state(session_id, root)
     state_written = session_state.get("state_written", False)

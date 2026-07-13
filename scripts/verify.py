@@ -31,8 +31,8 @@ from adapters.verify_links import check_file, DEFAULT_ALLOWED_MISSING  # noqa: E
 # during sync; other `scripts/` entries are repo/deployer-only commands.
 BASE_ALLOWED_MISSING = DEFAULT_ALLOWED_MISSING + [
     "Docs/",
-    # .agent/ files are runtime-generated (loop_state, session_state, handoff_letter, knowledge_distill)
-    ".agent/",
+    # .agents/ files are runtime-generated (loop_state, session_state, handoff_letter, knowledge_distill)
+    ".agents/",
     # Deployer-repo directories not present in a deployed project
     "adapters/",
     "scripts/verify.py",
