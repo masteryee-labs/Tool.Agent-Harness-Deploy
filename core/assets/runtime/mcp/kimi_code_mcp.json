@@ -1,10 +1,13 @@
 {
-  "_Agent Harness Deploy_note": "Auto-generated MCP config for Kimi Code by Agent Harness Deploy. Kimi Code reads MCP from ~/.kimi-code/config.toml (TOML, inline). No separate JSON MCP file.",
-  "mcpServers": {
-    "chroma-hybrid-search": {
-      "command": "python",
-      "args": ["distill/skills/chroma-hybrid-search/scripts/search.py", "--serve"],
-      "_disabled": true
+  "_ahd_meta": {
+    "note": "Auto-generated MCP config for Kimi Code by Agent Harness Deploy. Kimi Code reads MCP from ~/.kimi-code/config.toml (TOML, inline). No separate JSON MCP file. Disabled servers listed below — to enable, copy a server block into mcpServers and install its requirements.",
+    "disabled_servers": {
+      "chroma-hybrid-search": {
+        "command": "python",
+        "args": ["distill/skills/chroma-hybrid-search/scripts/search.py", "--serve"],
+        "enable_instructions": "pip install -r distill/skills/chroma-hybrid-search/requirements.txt"
+      }
     }
-  }
+  },
+  "mcpServers": {}
 }

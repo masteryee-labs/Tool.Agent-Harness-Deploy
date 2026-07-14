@@ -252,11 +252,33 @@ def main():
     except Exception:
         pass
 
-    # Detect oversized context
+    # Detect oversized context and enforce compaction
     try:
         oversized = _response_size(tool_response) > CONTEXT_OVERSIZE_THRESHOLD
         if oversized:
-            ahd_session.write_context_flags(session_id, {"context_oversized": True}, root)
+            flags = ahd_session.read_context_flags(session_id, root)
+            counter = flags.get("oversized_tool_calls_since_flag", 0)
+            ahd_session.write_context_flags(session_id, {
+                "context_oversized": True,
+                "oversized_tool_calls_since_flag": counter,
+                "oversized_first_detected": ts,
+            }, root)
+            # Print directive to stderr — most tools feed hook stderr back to the agent.
+            print(
+                f"[Agent Harness Deploy] context_oversized detected "
+                f"(response > {CONTEXT_OVERSIZE_THRESHOLD} chars). "
+                f"Run context-compactor skill before continuing: "
+                f"offload full output to .agents/tmp/, keep head+tail+path in context. "
+                f"Read .agents/context_flags/{session_id}.json for details.",
+                file=sys.stderr,
+            )
+        elif ahd_session.read_context_flags(session_id, root).get("context_oversized"):
+            # Flag still set from a prior call — agent hasn't compacted yet. Increment counter.
+            flags = ahd_session.read_context_flags(session_id, root)
+            counter = flags.get("oversized_tool_calls_since_flag", 0) + 1
+            ahd_session.write_context_flags(session_id, {
+                "oversized_tool_calls_since_flag": counter,
+            }, root)
     except Exception:
         pass
 

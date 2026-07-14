@@ -9,23 +9,23 @@ pre_tool_use = "python .codex/hooks/pre_tool_use.py"
 post_tool_use = "python .codex/hooks/post_tool_use.py"
 stop = "python .codex/hooks/stop.py"
 
-[permissions]
-# Allow safe read/edit operations without confirmation
-allow_read = true
-allow_edit = true
-allow_write = true
+# Codex CLI 0.138.0+ uses named permission profiles under [permissions.<name>].
+# Built-in profiles: :read-only, :workspace, :danger-full-access.
+# :workspace allows read/write within the project workspace without confirmation.
+default_permissions = ":workspace"
 
-# Deny dangerous shell patterns (enforced by pre_tool_use hook)
-deny_patterns = [
-    "rm -rf /",
-    "rm -rf ~",
-    "git push --force",
-    "git push -f",
-    "git reset --hard origin",
-    "curl * | bash",
-    "chmod -R 777",
-    "mkfs",
-]
+# Custom profile extending :workspace (uncomment to customize further):
+# [permissions.agent-harness-deploy]
+# description = "Agent Harness Deploy workspace profile"
+# extends = ":workspace"
+# [permissions.agent-harness-deploy.filesystem.":workspace_roots"]
+# "." = "write"
+# "**/*.env" = "deny"
+
+# Dangerous shell patterns are NOT part of the Codex permission profile system.
+# They are enforced by the pre_tool_use hook (see [hooks] above), which blocks:
+#   rm -rf /, rm -rf ~, git push --force, git push -f, git reset --hard origin,
+#   curl * | bash, chmod -R 777, mkfs
 
 [mcp_servers]
 # ChromaDB hybrid search ??ships with Agent Harness Deploy at distill/skills/chroma-hybrid-search/

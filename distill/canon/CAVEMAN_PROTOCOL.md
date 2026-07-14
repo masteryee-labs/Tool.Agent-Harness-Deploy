@@ -50,8 +50,15 @@ Context fill is a leading indicator of token waste. When the window fills, the m
 - A single tool output > 20 lines or > 3KB → dispatch `context-compactor` skill.
 - A single `read` would exceed 50 lines → use `read` with `offset`/`limit` or `grep`.
 
-### Automatic load
-- `post_tool_use.py` writes `context_oversized: true` to `.agents/context_flags/<session_id>.json` when a tool response is oversized.
+### Automatic load + enforcement
+- `post_tool_use.py` writes `context_oversized: true` + `oversized_tool_calls_since_flag: 0` to `.agents/context_flags/<session_id>.json` when a tool response is oversized. It also prints a stderr directive telling the agent to run `context-compactor` — most tools feed hook stderr back to the agent as feedback.
+- If the flag is still set on the next tool call, `post_tool_use.py` increments `oversized_tool_calls_since_flag` — tracking how many tool calls have passed without compaction.
+- `pre_tool_use.py` enforces a **graduated gate** based on the counter:
+  - **counter 0-1** (note): non-compaction tools allowed + stderr note "compact soon."
+  - **counter 2-3** (warning): non-compaction tools allowed + stderr warning "compact NOW, block incoming."
+  - **counter >= 4** (block): non-compaction tools **blocked** (exit 2). Agent must run `context-compactor` skill and clear the flag before continuing.
+  - Compaction-safe tools (read, grep, glob, write, edit, notebook_*, todo_write, skill) are **always allowed** — the agent needs them to actually compact.
+- This makes compaction **enforced, not suggested**. The agent can't ignore the flag indefinitely — at 4+ un-compacted tool calls, it is forced to act.
 - `loop-memory` reads `.agents/context_flags/<session_id>.json` at the end of every iteration and updates `.agents/session_state/<session_id>.json` and `.agents/loop_state/<session_id>.md`.
 - `.agents/loop_state.md` registry front matter must include:
   ```yaml

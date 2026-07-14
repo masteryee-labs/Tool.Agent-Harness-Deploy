@@ -1,20 +1,19 @@
 {
-  "_Agent Harness Deploy_note": "Auto-generated MCP config template for Cline. Merges with ~/.cline/data/settings/cline_mcp_settings.json. Uncomment servers you want to enable.",
-  "mcpServers": {
-    "_comment_chroma_hybrid_search": "Hybrid retrieval (BM25 + ChromaDB vector + BGE-Reranker) over ~/.deep-memory. Requires: pip install -r distill/skills/chroma-hybrid-search/requirements.txt",
-    "chroma-hybrid-search": {
-      "command": "python",
-      "args": ["distill/skills/chroma-hybrid-search/scripts/search.py", "--serve"],
-      "env": {},
-      "_disabled": true,
-      "_enable_instructions": "Set _disabled to false after installing requirements"
-    },
-    "_comment_codebase_memory": "Codebase knowledge graph (tree-sitter + Hybrid LSP). Optional companion tool. Install from https://github.com/DeusData/codebase-memory-mcp",
-    "codebase-memory-mcp": {
-      "command": "codebase-memory-mcp",
-      "args": [],
-      "_disabled": true,
-      "_enable_instructions": "Install from https://github.com/DeusData/codebase-memory-mcp, then set _disabled to false"
+  "_ahd_meta": {
+    "note": "Auto-generated MCP config template for Cline. Merges with ~/.cline/data/settings/cline_mcp_settings.json. Disabled servers listed below — to enable, copy a server block into mcpServers and install its requirements.",
+    "disabled_servers": {
+      "chroma-hybrid-search": {
+        "command": "python",
+        "args": ["distill/skills/chroma-hybrid-search/scripts/search.py", "--serve"],
+        "env": {},
+        "enable_instructions": "pip install -r distill/skills/chroma-hybrid-search/requirements.txt"
+      },
+      "codebase-memory-mcp": {
+        "command": "codebase-memory-mcp",
+        "args": [],
+        "enable_instructions": "Install from https://github.com/DeusData/codebase-memory-mcp"
+      }
     }
-  }
+  },
+  "mcpServers": {}
 }

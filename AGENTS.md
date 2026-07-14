@@ -467,11 +467,15 @@ Not every lesson waits for a high-completion task. Some patterns appear after a 
 ```json
 {
   "session_id": "s-...",
-  "context_oversized": true
+  "context_oversized": true,
+  "oversized_tool_calls_since_flag": 0,
+  "oversized_first_detected": "2026-07-14T12:00:00Z"
 }
 ```
-- `post_tool_use.py` writes `context_oversized` to `.agents/context_flags/<session_id>.json`.
-- `context-compactor` reads `.agents/context_flags/<session_id>.json`.
+- `post_tool_use.py` writes `context_oversized: true` + `oversized_tool_calls_since_flag: 0` to `.agents/context_flags/<session_id>.json` when a tool response is oversized. It also prints a stderr directive to the agent.
+- If the flag remains set, `post_tool_use.py` increments `oversized_tool_calls_since_flag` on each subsequent tool call.
+- `pre_tool_use.py` enforces a graduated gate: note (0-1) → warning (2-3) → block non-compaction tools (4+). Compaction-safe tools (read, grep, write, edit, etc.) are always allowed.
+- `context-compactor` reads `.agents/context_flags/<session_id>.json`, compacts, then clears `context_oversized: false` + resets counter to unblock the gate.
 - `loop-memory` reads `.agents/context_flags/<session_id>.json` at the end of each iteration,
   copies `context_oversized` into `.agents/session_state/<session_id>.json`, and clears it.
 
@@ -673,15 +677,45 @@ The human moves from "driving every turn" to "designing the loop, setting rules,
 
 ---
 
-## Two loop modes
+## Four loop types (handoff 2×2)
+
+> Source: Inside article (2026-07-14) on Loop Engineering, mapping Anthropic's manual/evaluated/scheduled trichotomy + Avi Chawla's four-type diagram to Claude Code's `/goal` `/loop` `/schedule` primitives. The four types differ on **one axis only**: how much of "what triggers a run" and "what decides done" is handed to the system vs kept by the human.
+
+The two questions every loop answers: **what starts a run**, and **what decides it's finished**. The four types are the 2×2 of who owns each.
+
+| Type | Trigger | Done-decision | Claude Code primitive | When |
+|------|---------|---------------|----------------------|------|
+| **Turn-based** | Human prompt | Human reviews output | (default chat) | Exploratory; each output reshapes next question |
+| **Goal-based** | Human `/goal` w/ success condition + budget | Independent evaluator model | `/goal` | Result measurable; process not worth watching |
+| **Time-based** | Clock (interval) | Human / cap | `/loop` (local) or `/schedule` (cloud) | Content known; only timing repeats |
+| **Proactive** | Event / schedule, **no human present** | Adversarial review agent (passes → close) | routine + triage/fix/adversarial agents | Unpredictable incoming work; standing duty |
+
+**Handoff ladder:** turn-based keeps both with human → goal-based automates done-decision → time-based automates trigger → proactive automates both **and** generates the workflow on the spot.
+
+**Mapping to this protocol:**
+- Turn-based = the manual baseline; not loop-engineered, just chat. No kickoff needed. But: write the verification you repeat every turn into a Skill (SKILL.md) — checklist, multi-step flow, support files. The loop stays human-driven, but each turn's quality stops depending on you remembering to remind the agent. This is the cheapest upgrade: no autonomy added, consistency gained.
+- Goal-based = `/goal` mode below + maker≠checker (the evaluator is the checker).
+- Time-based = `/loop` (local) or `/schedule` (cloud) below.
+- Proactive = §"Proactive loop pattern" below — the only type where the workflow itself is generated at trigger time and an adversarial reviewer is the gate.
+
+**Pick by task nature, not by sophistication.** Exploratory → turn-based. Measurable → goal-based. Periodic → time-based. Standing duty with unpredictable input → proactive. Mismatch = either over-engineering or letting a high-automation loop run something that needs human judgment.
+
+**The deeper the handoff, the higher the bar for stop conditions + guardrails.** No clear termination → infinite loop burns API budget. No adversarial review in proactive → errors amplified while no one watches. The two core skills loop engineering demands: define "what counts as done" and "how to brake on error."
+
+---
+
+## Three loop modes
 
 | Mode | Semantics | When to use |
 |------|-----------|-------------|
-| `/loop` | Cadence-based: re-run every N min/hours. Never self-stops. | Inspection, monitoring, periodic checks |
+| `/loop` | Cadence-based, **local**: re-run every N min/hours. Never self-stops. Stops when machine sleeps / user closes laptop. | Inspection, monitoring, periodic checks on your own machine |
+| `/schedule` | Cadence-based, **cloud**: same cadence semantics, but runs server-side. Keeps running when laptop closed. | Periodic work that must run unattended across sleep/shutdown |
 | `/goal` | Condition-based: run until a verifiable condition is met. | Bug-fix-until-tests-pass, refactor-until-clean |
 
-- Has an endpoint → `/goal`; no endpoint → `/loop`.
-- `/loop` for convergent tasks = infinite spend. `/goal` for inspection = never terminates.
+- Has an endpoint → `/goal`; no endpoint → `/loop` or `/schedule`.
+- `/loop` / `/schedule` for convergent tasks = infinite spend. `/goal` for inspection = never terminates.
+- `/schedule` raises the stakes: it runs while you're away, so stop conditions + budget cap + adversarial review are **mandatory**, not optional. A broken `/schedule` burns budget 24/7.
+- **Cadence matches data change rate, not your patience.** PR might change hourly → don't poll every minute. Over-polling burns tokens, API quota, and external-service budget for zero new information. Set the interval to the fastest rate the watched thing actually changes.
 
 ## The 5+1 components
 
@@ -711,6 +745,8 @@ Three conditions must hold to loop-ify a work segment:
 
 If any fails, don't loop unattended. Loop to "produce draft for human review" instead.
 
+**Don't loop what a script can do deterministically.** Fixed-format conversion, form filling, data cleaning, mechanical rename — if the steps are fully predictable and need no judgment, write a script, don't burn model tokens re-deriving the same transformation every iteration. Loops are for work that *changes* based on what the last iteration found. Deterministic work in a loop = paying LLM prices for `sed`.
+
 ## Mandatory stop conditions (all three required)
 
 1. **Budget cap** — token/iteration/cost limit. Hit → stop.
@@ -736,6 +772,8 @@ Without step 4, the next iteration repeats work or skips ahead. State is the spi
 ## Maker/checker in loops
 
 The agent that runs the loop body **must not** judge whether the stop condition is met. A separate checker (fresh context, or deterministic script) evaluates the condition. Prevents "I think it's done" self-approval.
+
+**The evaluator should be a smaller / faster / cheaper model than the worker.** The worker does the hard generative work; the evaluator only checks a condition ("did tests pass?", "is the score ≥ 90?"). That check is cheap — don't spend worker-tier tokens on it. Using the same expensive model for both roles doubles cost for no quality gain. The evaluator's job is narrow and verifiable; a smaller model does it just as well, faster.
 
 ## Remediation sub-loop
 
@@ -1119,6 +1157,98 @@ No auto-metric for core (e.g., "is this a good argument?"). Verifiable edges (e.
 
 **Loop the edges. Keep the core human.**
 
+## Proactive loop pattern (no human present, workflow generated on the spot)
+
+> Source: Inside article (2026-07-14) on Loop Engineering, fourth type. The most automated of the four: trigger and done-decision both handed to the system, **and** the workflow itself is generated at trigger time. Distinct from hook-based variant (§"Hook-based variant") which fires a fixed prompt on a known event; proactive fires on unpredictable input and assembles the agents it needs.
+
+### The pattern
+
+A **routine** (long-running watcher) monitors a channel (GitHub issues, Slack, alert stream, PR queue). When something needs handling, the routine generates a fresh workflow on the spot:
+
+```
+[routine: watch channel]
+   └─ event arrives (unpredictable content)
+      └─ triage agent: classify + decide if action needed
+         └─ fix agent: produce the change
+            └─ adversarial review agent: attack the fix
+               └─ passes → close task. Fails → back to fix (cap 2 rounds → escalate to human).
+```
+
+Three agents, three roles, **never the same agent across roles** (maker≠checker extended to triage≠fix≠review).
+
+### Kickoff template
+
+```
+Start the "[NAME]" proactive-loop.
+Routine: watch [channel: GitHub issues / Slack #channel / alert stream / PR queue]
+Trigger: [observable condition that means "needs handling"]
+Max concurrent tasks: [N]  Budget cap per task: [tokens]  Time limit per task: [wall-clock]
+Max retries per task: 2  (3rd → escalate to human, do NOT keep retrying)
+
+Per triggered task:
+  Step 1 — Triage agent (fresh context): classify incoming event.
+    Is action needed? What kind? What's the scope? Write triage result to state.
+  Step 2 — Fix agent (fresh context, ≠ triage): produce change from triage result.
+  Step 3 — Adversarial review agent (fresh context, ≠ fix): attack the fix.
+    Try to break it. Find edge cases. Check it doesn't solve X by breaking Y.
+    Pass → close task. Fail → back to Step 2 (count toward retry cap).
+  Step 4 — Write outcome to .agents/loop_state/<session_id>.md and
+    .agents/session_state/<session_id>.json, then call
+    python scripts/loop_memory_sync.py to update the registry.
+
+Exit per task: adversarial review passes OR retry cap hit (escalate).
+Exit routine: user stops OR channel decommissioned.
+State: §State contract (per task: triage result, fix diff, review verdict, retries)
+Maker/checker: triage ≠ fix ≠ review. Three separate agents. No agent plays two roles.
+```
+
+### When to use / NOT to use
+
+- **Use:** You can't predict what comes in, only that something will. Standing duty: PR queue, alert stream, issue triage, on-call bot.
+- **NOT:** Predictable content → use `/loop` or `/schedule` with a fixed prompt (cheaper, simpler). Measurable endpoint → use `/goal`. Needs human judgment on each item → don't go proactive, stay turn-based or L1.
+
+### Why adversarial review is the gate (not optional)
+
+Proactive runs **while no human is watching**. Without an adversarial reviewer, errors compound silently — the article's core warning: "少了對抗式審查這類把關，主動式迴圈的錯誤也可能在無人盯場時被放大." The adversarial reviewer is the substitute for the human who would otherwise catch the mistake.
+
+Adversarial ≠ lenient review. The reviewer's job is to **try to break the fix**, not to confirm it's fine. Concrete attacks:
+- Does the fix solve the symptom by breaking something else? (grep for collateral damage)
+- Does it pass the stated test but fail an adjacent one? (run the broader test suite)
+- Does it hardcode what should be parameterized? (check for magic values)
+- Does it match `knowledge_distill.md` anti-patterns? (grep state+knowledge)
+- Does it touch files outside the triage scope? (diff vs triage result)
+
+### Guardrails (mandatory — proactive without these is a red line)
+
+1. **Retry cap = 2 per task.** 3rd failure → escalate to human. Never let a proactive loop retry indefinitely on one item — that's the "infinite loop burns API budget" failure mode, running 24/7.
+2. **Budget cap per task.** Hit → escalate, don't silently continue.
+3. **Time limit per task.** Wall-clock cap. Hit → escalate.
+4. **Adversarial review is non-skippable.** No review = no close. "Looks fine" from the fix agent ≠ review.
+5. **Three distinct agents.** Triage = fix = review (same agent) = self-approval = red line.
+6. **Max concurrent tasks.** Unbounded concurrency = resource contention + comprehension debt. Default 3.
+7. **Escalation queue.** Failed/capped tasks land in a human-readable queue, not silently dropped. Human reviews the queue periodically (this is where comprehension debt lives — see §"Comprehension debt").
+8. **State write per task.** Every triggered task writes state. No state = next routine iteration can't tell what was handled.
+
+### Relationship to other patterns
+
+- **vs Hook-based variant (§"Hook-based variant"):** Hook fires a *fixed* prompt on a *known* event (afterEdit → run tests). Proactive fires on *unpredictable* content and *generates* the workflow. Hook = known event, fixed response. Proactive = unknown event, generated response.
+- **vs Entropy sweep (§"Entropy Management"):** Sweep is time-based (cadence) scanning for drift. Proactive is event-based responding to incoming work. Both can run together: sweep handles internal drift, proactive handles external events.
+- **vs Harness gap loop (§"Harness Gap Loop"):** Gap loop is reactive to a *specific* regression. Proactive is reactive to *any* incoming event. Gap loop closes one gap; proactive handles a stream.
+- **vs Edge loop (§"Edge loop pattern"):** Edge loop wraps a human core (before/after). Proactive has no human in the per-task loop — the adversarial reviewer *replaces* the human. This is exactly why the adversarial reviewer must be real, not ceremonial.
+
+### L-level constraint
+
+Proactive loops are **L3 (unattended) by definition** — no human present per task. Per §"Phased rollout," L3 requires Readiness Score ≥90 and prior L1→L2→L3 progression. Do **not** deploy a proactive loop on a harness that hasn't earned L3. A proactive loop on a soft harness = unattended mistakes at scale, 24/7.
+
+### Cognitive surrender check (extra, proactive-specific)
+
+Before deploying a proactive loop, the builder must answer:
+1. For each plausible incoming event type, what does correct handling look like?
+2. What's a failure mode the adversarial reviewer would miss?
+3. What's the escalation criteria — when does the routine give up on a task?
+
+Can't answer → cognitive surrender (§"Cognitive surrender"). You're building the loop to avoid understanding the work. Stop. Do the understanding first.
+
 ## Entropy Management (background sweep)
 
 > Source: OpenAI's Harness Engineering blog, via Wisely Chen's guide. Agents replicate existing patterns — including bad ones. Without a background sweep, entropy accumulates and hardens.
@@ -1242,6 +1372,10 @@ Prerequisite: **sufficient back-pressure** (tests, lint, structural checks) must
 | PRD iteration + Cognitive surrender | Not iterating PRD = accepting first guess = surrender. |
 | PRD iteration + Loop-ifiability gate | PRD iteration is a `/goal` loop: run until user confirms. |
 | PRD iteration + Start small (VERIFICATION_PROTOCOL) | Start with rough PRD + 1 test case. Iterate both. |
+| Proactive loop + Cognitive surrender | Proactive runs unattended — cognitive surrender risk is highest here. Extra pre-deploy check mandatory. |
+| Proactive loop + Comprehension debt | No human per task → escalation queue is where comprehension debt hides. Periodic queue review non-skippable. |
+| Proactive loop + Maker≠checker | Extended to triage ≠ fix ≠ review. Three roles, three agents. |
+| Four types + Loop-ifiability gate | The gate runs before any of the four types. Type choice is downstream of "should this loop at all?" |
 
 ## The deepest trap
 
@@ -1255,6 +1389,9 @@ You can.
 ## Source references
 
 - Addy Osmani / Boris Cherny / Karpathy autoresearch — Loop Engineering concept.
+- Anthropic, "Getting started with loops" (2026-07-07) — official 4-type framework (turn/goal/time/proactive), evaluator-as-smaller-model, cadence-matches-change-rate, deterministic-work-to-script, turn-based+Skills.
+- Inside article (2026-07-14), "Loop engineering 是什麼？四種迴圈決定你要盯 AI 代理多緊" — four-type handoff 2×2 framework (turn-based / goal-based / time-based / proactive), `/schedule` cloud vs `/loop` local distinction, adversarial review as proactive gate.
+- aiposthub.com (2026-07-13), "Claude Code 官方把 AI Agent 拆成 4 種循環" — operator-level details: evaluator = smaller/faster model, over-polling cost, deterministic work → script, turn-based + SKILL.md as cheapest upgrade.
 - loops.elorm.xyz — loop primitives + pre-built loop collection.
 - cobusgreyling/loop-engineering — loop-audit, phased rollout (L1→L2→L3), comprehension/intent debt.
 - govin999999 Threads (Loopkit Vault) — vault pattern.
@@ -1674,8 +1811,15 @@ Context fill is a leading indicator of token waste. When the window fills, the m
 - A single tool output > 20 lines or > 3KB → dispatch `context-compactor` skill.
 - A single `read` would exceed 50 lines → use `read` with `offset`/`limit` or `grep`.
 
-### Automatic load
-- `post_tool_use.py` writes `context_oversized: true` to `.agents/context_flags/<session_id>.json` when a tool response is oversized.
+### Automatic load + enforcement
+- `post_tool_use.py` writes `context_oversized: true` + `oversized_tool_calls_since_flag: 0` to `.agents/context_flags/<session_id>.json` when a tool response is oversized. It also prints a stderr directive telling the agent to run `context-compactor` — most tools feed hook stderr back to the agent as feedback.
+- If the flag is still set on the next tool call, `post_tool_use.py` increments `oversized_tool_calls_since_flag` — tracking how many tool calls have passed without compaction.
+- `pre_tool_use.py` enforces a **graduated gate** based on the counter:
+  - **counter 0-1** (note): non-compaction tools allowed + stderr note "compact soon."
+  - **counter 2-3** (warning): non-compaction tools allowed + stderr warning "compact NOW, block incoming."
+  - **counter >= 4** (block): non-compaction tools **blocked** (exit 2). Agent must run `context-compactor` skill and clear the flag before continuing.
+  - Compaction-safe tools (read, grep, glob, write, edit, notebook_*, todo_write, skill) are **always allowed** — the agent needs them to actually compact.
+- This makes compaction **enforced, not suggested**. The agent can't ignore the flag indefinitely — at 4+ un-compacted tool calls, it is forced to act.
 - `loop-memory` reads `.agents/context_flags/<session_id>.json` at the end of every iteration and updates `.agents/session_state/<session_id>.json` and `.agents/loop_state/<session_id>.md`.
 - `.agents/loop_state.md` registry front matter must include:
   ```yaml

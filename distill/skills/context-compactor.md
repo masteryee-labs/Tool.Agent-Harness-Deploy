@@ -16,6 +16,8 @@ description: "Use when context fill is >70%, a single tool output exceeds 20 lin
 ## When to run
 At the start of every iteration if context is high, and immediately after a large tool output.
 
+**Enforcement:** `pre_tool_use.py` will block non-compaction tool calls after 4+ un-compacted oversized detections. You **must** run this skill and clear the flag to unblock. Compaction-safe tools (read, grep, write, edit) remain available during the block — use them to compact.
+
 ## How
 
 1. Read `.agents/context_flags/<session_id>.json` if it exists. It contains `context_oversized` and any per-session signal.
@@ -41,7 +43,10 @@ At the start of every iteration if context is high, and immediately after a larg
 5. Update `.agents/loop_state/<session_id>.md` and `.agents/session_state/<session_id>.json`:
    - `context_fill_pct` (estimate)
    - `caveman_level` (compact / ultra as needed)
-6. After compacting, clear `.agents/context_flags/<session_id>.json` by removing the `context_oversized` flag.
+6. After compacting, clear `.agents/context_flags/<session_id>.json`:
+   - Set `context_oversized: false`
+   - Reset `oversized_tool_calls_since_flag: 0`
+   This unblocks the `pre_tool_use.py` gate. Without clearing, non-compaction tools will remain blocked.
 
 ## Output
 ```

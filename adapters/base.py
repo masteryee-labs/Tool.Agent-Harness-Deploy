@@ -614,11 +614,25 @@ class BaseAdapter:
 
                 template = json.loads(template_path.read_text(encoding="utf-8"))
 
-                # Merge mcpServers: existing servers preserved, template servers added
+                # Merge mcpServers: existing servers preserved, template servers added.
+                # Strip any non-standard _-prefixed keys (e.g. _disabled, _enable_instructions,
+                # _comment_*) from server configs and from the mcpServers map itself, so that
+                # re-running sync cleans up legacy deploys that polluted user MCP files.
                 existing_servers = existing.get("mcpServers", {})
                 template_servers = template.get("mcpServers", {})
-                merged_servers = dict(existing_servers)
-                for name, cfg in template_servers.items():
+
+                def _clean_servers(servers: dict) -> dict:
+                    cleaned = {}
+                    for name, cfg in servers.items():
+                        if name.startswith("_"):
+                            continue  # drop _comment_* pseudo-servers
+                        if isinstance(cfg, dict):
+                            cfg = {k: v for k, v in cfg.items() if not k.startswith("_")}
+                        cleaned[name] = cfg
+                    return cleaned
+
+                merged_servers = _clean_servers(existing_servers)
+                for name, cfg in _clean_servers(template_servers).items():
                     if name not in merged_servers:
                         merged_servers[name] = cfg
                 existing["mcpServers"] = merged_servers

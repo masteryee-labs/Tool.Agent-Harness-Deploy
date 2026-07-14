@@ -118,11 +118,15 @@ Not every lesson waits for a high-completion task. Some patterns appear after a 
 ```json
 {
   "session_id": "s-...",
-  "context_oversized": true
+  "context_oversized": true,
+  "oversized_tool_calls_since_flag": 0,
+  "oversized_first_detected": "2026-07-14T12:00:00Z"
 }
 ```
-- `post_tool_use.py` writes `context_oversized` to `.agents/context_flags/<session_id>.json`.
-- `context-compactor` reads `.agents/context_flags/<session_id>.json`.
+- `post_tool_use.py` writes `context_oversized: true` + `oversized_tool_calls_since_flag: 0` to `.agents/context_flags/<session_id>.json` when a tool response is oversized. It also prints a stderr directive to the agent.
+- If the flag remains set, `post_tool_use.py` increments `oversized_tool_calls_since_flag` on each subsequent tool call.
+- `pre_tool_use.py` enforces a graduated gate: note (0-1) → warning (2-3) → block non-compaction tools (4+). Compaction-safe tools (read, grep, write, edit, etc.) are always allowed.
+- `context-compactor` reads `.agents/context_flags/<session_id>.json`, compacts, then clears `context_oversized: false` + resets counter to unblock the gate.
 - `loop-memory` reads `.agents/context_flags/<session_id>.json` at the end of each iteration,
   copies `context_oversized` into `.agents/session_state/<session_id>.json`, and clears it.
 
