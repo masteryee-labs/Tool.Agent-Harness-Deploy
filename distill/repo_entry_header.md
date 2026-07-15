@@ -103,6 +103,7 @@ Full red lines → `distill/canon/REDLINES.md`.
 | Manual deployment | `Docs/02-Deployment-Guide.md §Manual deploy` |
 | Troubleshooting | `Docs/12-Troubleshooting.md` |
 | Glossary | `Docs/13-Glossary.md` |
+| Comment & version discipline (CLI tool eval) | `Docs/14-Comment-Version-Discipline.md` |
 | Orchestrator design + self-orchestration | `Docs/04-Orchestrator-Design.md` |
 | Commander-Worker delegation + 派工三件套 | `distill/orchestrator/COMMANDER.md` |
 | Nuwa system + Nuwa Team (cognitive diversity) | `Docs/Agents/nuwa.md` |

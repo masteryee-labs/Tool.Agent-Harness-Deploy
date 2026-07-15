@@ -314,12 +314,14 @@ Linters assume idioms, intent, real imports, honesty. AI violates all: mixes 6+ 
 | **Hedging** | Comments revealing uncertainty | `# should work hopefully` | ❌ |
 | **Over-engineering** | God functions, deep nesting | 500-line function, 8 levels deep | ⚠️ |
 | **Debug artifacts** | Leftover `print()`, redundant comments | `print(x)` above `return x` | ⚠️ |
+| **Explanation bloat** | Comments that restate the code | `# loop through items` above `for x in items:` | ❌ |
+| **Version stacking** | In-file version markers / changelog blocks | `<!-- v2 fixed X -->`, `# v3`, `<!-- updated 2026-07-15 -->` | ❌ |
 ### The four slop axes (from sloppylint)
 | Axis | Name | Measures |
 |------|------|----------|
-| 📢 **Noise** | Information Utility | Debug artifacts, redundant comments — no value |
+| 📢 **Noise** | Information Utility | Debug artifacts, redundant comments, explanation bloat — no value |
 | 🤥 **Lies** | Information Quality | Hallucinations, placeholders, confident wrongness — claims to work but doesn't |
-| 💀 **Soul** | Style / Taste | Over-engineering, god functions, hedging — works but bad |
+| 💀 **Soul** | Style / Taste | Over-engineering, god functions, hedging, version stacking — works but bad |
 | 🏗️ **Structure** | Structural Issues | Bare except, star imports, anti-patterns — structurally wrong |
 ### Slop score as a convergence metric
 Slop score = **convergence metric for `/goal` loops** — more precise than "make code better":
@@ -340,6 +342,8 @@ slop-scan pins mature OSS to pre-AI commits (before 2025-01-01). **AI repos scor
 - **Hallucinated imports = highest-severity slop.** 20% of AI imports non-existent → `ImportError`. Detect at CI.
 - **Placeholder code (`pass`, `TODO`) = AI gave up.** Worse than no function — illusion of coverage. Flag all.
 - **Hedging comments = AI uncertainty.** `# should work hopefully` → human review signal.
+- **Explanation bloat = restating the code.** `# loop through items` above `for x in items:` adds zero information, consumes tokens, rots when code changes. Detect: comment text ≈ code semantics. Source: arXiv 2605.02741 (Volume-Quality Inverse Law).
+- **Version stacking = context rot in-file.** `<!-- v2 -->`, `# v3 fixed X`, `<!-- updated 2026-07-15 -->` accumulated across edits. Version truth = git + append-only `CHANGELOG.md`, never in-file stacking. Source: arXiv 2606.09090 (Context Rot). `scripts/sync.py --canon` rejects canon files with stacked header markers.
 ## In this harness
 - `distill/canon/VERIFICATION_PROTOCOL.md` — the rule, shipped to every tool.
 - `distill/orchestrator/workers/VERIFIER.md` — the Verifier worker (fresh context, checklist).

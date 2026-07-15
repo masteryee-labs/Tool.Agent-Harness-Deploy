@@ -17,6 +17,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from pathlib import Path
 
@@ -57,6 +58,96 @@ CANON_ORDER = [
     "HARNESS_ENGINEERING.md",
     "REDLINES.md",
 ]
+
+
+# --- Canon version-stacking guard (REDLINES.md #17) ---------------------------
+# Scans canon file headers for stacked version markers / changelog blocks.
+# Version truth = git history + append-only CHANGELOG.md, never in-file stacking.
+# See distill/canon/REDLINES.md #17, CORE_CANON.md "Version discipline".
+
+# Patterns that signal in-file version stacking. A single canonical front-matter
+# line like "> v1.0 | ..." is allowed (one occurrence). Stacking = 2+ occurrences
+# OR explicit changelog/updated markers in the body.
+_VERSION_MARKER_PATTERNS = [
+    re.compile(r"<!--\s*v\d+", re.IGNORECASE),            # <!-- v2 -->
+    re.compile(r"^\s*#\s*v\d+\s", re.IGNORECASE),         # # v3 fixed X
+    re.compile(r"<!--\s*updated\s+\d{4}", re.IGNORECASE),  # <!-- updated 2026-07-15 -->
+    re.compile(r"^\s*//\s*v\d+\s", re.IGNORECASE),         # // v2
+    re.compile(r"^\s*#\s*changelog", re.IGNORECASE),       # # changelog
+    re.compile(r"<!--\s*changelog", re.IGNORECASE),        # <!-- changelog
+    re.compile(r"^\s*#\s*\d{4}-\d{2}-\d{2}\s", re.IGNORECASE),  # # 2026-07-15 fixed
+]
+
+# A single front-matter version line is allowed (e.g. "> v1.0 | ...").
+# This regex identifies the allowed single-occurrence header version line.
+_ALLOWED_HEADER_VERSION = re.compile(r"^\s*>\s*v\d+\.\d+", re.IGNORECASE)
+
+
+def _strip_code_spans(line: str) -> str:
+    """Remove backtick-wrapped code spans from a line.
+
+    Version markers inside code spans (e.g. `` `<!-- v2 -->` ``) are examples
+    cited in rule descriptions, not real in-file markers. Stripping them prevents
+    the guard from flagging the canon's own anti-pattern documentation.
+    """
+    return re.sub(r"`[^`]*`", "", line)
+
+
+def check_canon_version_stacking() -> list[str]:
+    """Scan canon files for in-file version stacking (REDLINES.md #17).
+
+    Returns a list of violation messages (empty = clean). A file fails if:
+      - 2+ version markers found in header (first 30 lines), OR
+      - any explicit changelog/updated marker found anywhere in the file,
+        unless it's the single allowed front-matter version line.
+
+    Code spans (backtick-wrapped) are stripped before matching, so the canon's
+    own anti-pattern examples (`` `<!-- v2 -->` ``) don't trigger false positives.
+
+    This is a pre-sync gate: if violations exist, sync aborts with exit code 2
+    so the human fixes the canon before it propagates to every tool.
+    """
+    violations: list[str] = []
+    for fname in CANON_ORDER:
+        fpath = CANON_DIR / fname
+        if not fpath.exists():
+            continue
+        text = fpath.read_text(encoding="utf-8")
+        lines = text.splitlines()
+        header = lines[:30]
+
+        # Count version markers in header (excluding the allowed front-matter line)
+        header_hits = 0
+        for line in header:
+            if _ALLOWED_HEADER_VERSION.match(line):
+                continue  # single allowed front-matter version line
+            stripped = _strip_code_spans(line)
+            for pat in _VERSION_MARKER_PATTERNS:
+                if pat.search(stripped):
+                    header_hits += 1
+                    break  # one hit per line is enough
+
+        if header_hits >= 2:
+            violations.append(
+                f"{fname}: {header_hits} version markers in header (first 30 lines). "
+                f"Stacking detected. Move version history to CHANGELOG.md or git. "
+                f"See REDLINES.md #17."
+            )
+
+        # Any changelog/updated marker anywhere = stacking (body-level)
+        for i, line in enumerate(lines, 1):
+            if _ALLOWED_HEADER_VERSION.match(line):
+                continue
+            stripped = _strip_code_spans(line)
+            for pat in _VERSION_MARKER_PATTERNS:
+                if pat.search(stripped):
+                    violations.append(
+                        f"{fname}:{i}: in-file version/changelog marker: "
+                        f"{line.strip()[:80]}. Use CHANGELOG.md or git. See REDLINES.md #17."
+                    )
+                    break
+
+    return violations
 
 
 def build_canonical_body() -> str:
@@ -134,6 +225,18 @@ def sync_all(project_root: str = ".", global_too: bool = False,
 
 def _sync_all_impl(project_root: str, global_too: bool,
                    only_tools: list[str] | None, project_root_path: Path) -> int:
+    # Pre-sync gate: reject canon files with in-file version stacking (REDLINES.md #17).
+    # This prevents context rot from propagating to every synced tool.
+    stacking_violations = check_canon_version_stacking()
+    if stacking_violations:
+        print("== Canon version-stacking guard: FAIL ==", file=sys.stderr)
+        print("Refusing to sync. Fix the canon before propagating to tools.", file=sys.stderr)
+        for v in stacking_violations:
+            print(f"  [!] {v}", file=sys.stderr)
+        print("Fix: move version history to CHANGELOG.md or rely on git commits.", file=sys.stderr)
+        print("See distill/canon/REDLINES.md #17.", file=sys.stderr)
+        return 2
+
     body = build_canonical_body()
     tool_ids = only_tools or all_tool_ids()
     seen_paths: set[str] = set()  # dedupe by target path

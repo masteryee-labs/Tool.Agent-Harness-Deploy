@@ -103,6 +103,7 @@ Full red lines → `distill/canon/REDLINES.md`.
 | Manual deployment | `Docs/02-Deployment-Guide.md §Manual deploy` |
 | Troubleshooting | `Docs/12-Troubleshooting.md` |
 | Glossary | `Docs/13-Glossary.md` |
+| Comment & version discipline (CLI tool eval) | `Docs/14-Comment-Version-Discipline.md` |
 | Orchestrator design + self-orchestration | `Docs/04-Orchestrator-Design.md` |
 | Commander-Worker delegation + 派工三件套 | `distill/orchestrator/COMMANDER.md` |
 | Nuwa system + Nuwa Team (cognitive diversity) | `Docs/Agents/nuwa.md` |
@@ -203,6 +204,8 @@ You are operating inside a **Agent Harness Deploy-distilled harness**:
 | Stop conditions | Every loop: budget cap + convergence check + time limit. |
 | Idle-yank | Agent stalls mid-loop → harness yanks it back. See `LOOP_PROTOCOL.md`. |
 | Honest clause | Can't do something → say so, list options, don't fabricate. |
+| Comment discipline | Comments are debt, not documentation. Default: don't write one. Write only if (a) user asks (teaching mode), (b) non-obvious invariant the reader can't derive from code, (c) API contract / public-interface doc, (d) `TODO`/`FIXME` with owner or issue ref, (e) language directive (`//go:generate`, `# type: ignore`). Restating-the-code comments = slop (see `REDLINES.md` #16). Source: arXiv 2605.02741 (Volume-Quality Inverse Law). |
+| Version discipline | Version truth lives in git history + one append-only `CHANGELOG.md`, never stacked inside source files. No `<!-- v2 -->`, `# v3 fixed X`, or per-edit date markers in file bodies. Stacking = context rot + recursive-depth debt (arXiv 2606.09090). See `REDLINES.md` #17. |
 
 ## 4. Deploy contract
 
@@ -1719,12 +1722,14 @@ Linters assume idioms, intent, real imports, honesty. AI violates all: mixes 6+ 
 | **Hedging** | Comments revealing uncertainty | `# should work hopefully` | ❌ |
 | **Over-engineering** | God functions, deep nesting | 500-line function, 8 levels deep | ⚠️ |
 | **Debug artifacts** | Leftover `print()`, redundant comments | `print(x)` above `return x` | ⚠️ |
+| **Explanation bloat** | Comments that restate the code | `# loop through items` above `for x in items:` | ❌ |
+| **Version stacking** | In-file version markers / changelog blocks | `<!-- v2 fixed X -->`, `# v3`, `<!-- updated 2026-07-15 -->` | ❌ |
 ### The four slop axes (from sloppylint)
 | Axis | Name | Measures |
 |------|------|----------|
-| 📢 **Noise** | Information Utility | Debug artifacts, redundant comments — no value |
+| 📢 **Noise** | Information Utility | Debug artifacts, redundant comments, explanation bloat — no value |
 | 🤥 **Lies** | Information Quality | Hallucinations, placeholders, confident wrongness — claims to work but doesn't |
-| 💀 **Soul** | Style / Taste | Over-engineering, god functions, hedging — works but bad |
+| 💀 **Soul** | Style / Taste | Over-engineering, god functions, hedging, version stacking — works but bad |
 | 🏗️ **Structure** | Structural Issues | Bare except, star imports, anti-patterns — structurally wrong |
 ### Slop score as a convergence metric
 Slop score = **convergence metric for `/goal` loops** — more precise than "make code better":
@@ -1745,6 +1750,8 @@ slop-scan pins mature OSS to pre-AI commits (before 2025-01-01). **AI repos scor
 - **Hallucinated imports = highest-severity slop.** 20% of AI imports non-existent → `ImportError`. Detect at CI.
 - **Placeholder code (`pass`, `TODO`) = AI gave up.** Worse than no function — illusion of coverage. Flag all.
 - **Hedging comments = AI uncertainty.** `# should work hopefully` → human review signal.
+- **Explanation bloat = restating the code.** `# loop through items` above `for x in items:` adds zero information, consumes tokens, rots when code changes. Detect: comment text ≈ code semantics. Source: arXiv 2605.02741 (Volume-Quality Inverse Law).
+- **Version stacking = context rot in-file.** `<!-- v2 -->`, `# v3 fixed X`, `<!-- updated 2026-07-15 -->` accumulated across edits. Version truth = git + append-only `CHANGELOG.md`, never in-file stacking. Source: arXiv 2606.09090 (Context Rot). `scripts/sync.py --canon` rejects canon files with stacked header markers.
 ## In this harness
 - `distill/canon/VERIFICATION_PROTOCOL.md` — the rule, shipped to every tool.
 - `distill/orchestrator/workers/VERIFIER.md` — the Verifier worker (fresh context, checklist).
@@ -2420,6 +2427,8 @@ Attention distribution in long context:
 13. **No reading all `loop_state/*.md` files at BOOT.** Read `.agents/loop_state.md` registry first, then only the one `.agents/loop_state/<session_id>.md` that matches the current task. Mass-reading session files is a red line.
 14. **No secrets in tool log / session state / journal.** Never write keys, tokens, passwords, or API credentials into `.agents/session_state/`, `.agents/session_state/<session_id>/journal.jsonl`, or any tool log. Redact `command`/`counter` before logging.
 15. **No modifying `distill/canon/HANDOFF_LETTER.md`.** Runtime judgment and project spirit go into `.agents/handoff_letter.md`. The canonical `HANDOFF_LETTER.md` is source-only and must not be edited by runtime scripts or sessions.
+16. **No explanatory comments in generated code.** AI-generated code must not contain comments that restate what the code already says (`# loop through items`, `// increment counter`). Comments are debt, not documentation. The only permitted comments: (a) API contracts / public-interface docs, (b) non-obvious invariants the reader cannot derive from the code, (c) `TODO`/`FIXME` with an owner or issue ref, (d) language directives (`//go:generate`, `# type: ignore`). Restating-the-code comments = slop. Source: arXiv 2605.02741 (Volume-Quality Inverse Law — comment bloat predicts structural decay); arXiv 2512.20334 (Comment Traps — commented-out/defective comments propagate defects at up to 58%). When the user asks for teaching mode, this red line relaxes for that session only.
+17. **No in-file version stacking.** Do not accumulate version markers, changelog blocks, or `<!-- updated YYYY-MM-DD -->` / `# v2 fixed X` / `# v3` lines inside source files. Version truth = git history + a single append-only `CHANGELOG.md` (one entry per release, not per edit). In-file stacking is context rot (arXiv 2606.09090) and recursive-depth debt. `scripts/sync.py --canon` rejects canon files with stacked version markers in the header. If you must record a change, write one line to `CHANGELOG.md` or rely on the git commit. Never edit a version marker inside the file body.
 
 ## Mechanical Enforcement
 

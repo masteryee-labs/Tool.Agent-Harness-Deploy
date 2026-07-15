@@ -103,6 +103,7 @@ Tool.Agent-Harness-Deploy/
 | 09 | Multi-Thinking Modes | Reducing hallucination via angle-switching |
 | 12 | Troubleshooting | Something didn't work |
 | 13 | Glossary | Term definitions + source references |
+| 14 | Comment & Version Discipline | AI comment slop + version stacking: CLI tool evaluation + integration plan |
 | — | References | Source links for the 5 pillars + vault assets + orchestrator architecture |
 | — | Agents/nuwa.md | Nuwa verification system + Nuwa Team (cognitive diversity) |
 
