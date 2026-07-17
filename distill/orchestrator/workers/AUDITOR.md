@@ -52,5 +52,13 @@ Run `slop-detector` on:
 - User-facing prose (filler phrases like `delve`, `leverage`, `seamless`, `robust`)
 - Commit messages (`update`/`fix`/`improve` without context)
 
+## Trigger (when to dispatch)
+- Every 5 iterations (periodic breadth pass — 8 fixed angles).
+- After a large output (>5 files or >200 lines changed).
+- Before declaring a task complete — **but the done-gate itself is `fable-judge`** (event-driven,
+  every done-declaration, focused on claims + frauds + verbatim gate lines). Dispatch fable-judge
+  first; Auditor adds the 8-angle breadth sweep. See `distill/skills/fable-judge.md`.
+- Keywords: auditor, adversarial audit, AUDITOR MODE.
+
 ## Model tier
 Fresh context required. Mid-to-high model. Never the same context as the author.

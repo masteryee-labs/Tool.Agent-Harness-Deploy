@@ -10,9 +10,12 @@ description: "Use when 5 iterations have passed, or after a large output (>5 fil
 > Run `claim-grader` and `slop-detector` before finalizing the audit output.
 
 ## Trigger
-- Every 5 iterations (mandatory).
+- Every 5 iterations (mandatory periodic breadth pass — 8 fixed angles).
 - After a large output (>5 files or >200 lines changed).
-- Before declaring a task complete.
+- Before declaring a task complete — **but the done-gate itself is `fable-judge`** (event-driven,
+  every done-declaration, focused on claims + frauds + verbatim gate lines per
+  `distill/canon/VERIFICATION_PROTOCOL.md §Verbatim execution gates`). Run fable-judge first;
+  Auditor adds the 8-angle breadth sweep. See `distill/skills/fable-judge.md`.
 - Keywords: auditor, adversarial audit, AUDITOR MODE.
 
 ## The eight audit angles
