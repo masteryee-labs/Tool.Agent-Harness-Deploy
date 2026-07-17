@@ -138,16 +138,16 @@ The concepts in this harness synthesize ideas from many sources. Key ones:
 | Loop Engineering | Addy Osmani, Boris Cherny, Karpathy autoresearch, loops.elorm.xyz |
 | Loop kickoff templates | loops.elorm.xyz (kickoff prompt structure) |
 | Harness Engineering | OpenAI blog (Ryan Lopopolo), Anthropic Harness Design, Mitchell Hashimoto |
-| Harness five dimensions | 温灁?"Harness Engineering — AI 工程師第一維度 |
+| Harness five dimensions | 温灁 "Harness Engineering — AI 工程師第一維度" |
 | 80-word instruction experiment | 控制平面大課題 |
 | Control-plane pattern | Ryan Carson, Wisely Chen 見解 |
 | CLAUDE.md discipline | Karpathy's CLAUDE.md, Boris Cherny |
-| Cross-tool entry sync | Yee-World-Life `.agents/scripts/sync_cross_tool_entries.py` pattern |
+| Cross-tool entry sync | masteryee-labs `.agents/scripts/sync_cross_tool_entries.py` pattern |
 | Skills format | Codex/Claude Code SKILL.md convention, obra/superpowers ("Use when..." pattern) |
 | Meta-skill enforcement | obra/superpowers `using-superpowers` pattern |
 | Worker frontmatter (color/emoji/services) | msitarzewski/agency-agents |
 | Judgment externalization | Fable 5 skills discipline (Iwo's Rigor Pack, kpab's Fable-5-native skills) |
-| Sub-agent templates | Yee-World-Life `AI_Subagent_Templates.md` v7.6 |
+| Sub-agent templates | masteryee-labs `AI_Subagent_Templates.md` v7.6 |
 
 > These sources inspired the design. Agent Harness Deploy is an independent implementation; it does not
 > copy their code. Each concept is adapted and cited where relevant in the Docs.

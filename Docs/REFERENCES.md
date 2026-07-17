@@ -41,10 +41,10 @@ Source references for the 5 pillars of Agent Harness Deploy.
 
 ---
 
-## Source architecture — Yee-World-Life `Docs/Agents/`
+## Source architecture — masteryee-labs `Docs/Agents/`
 
 The Commander + Workers pattern in Agent Harness Deploy is a generalized, tool-agnostic
-distillation of the orchestrator architecture used in the Yee-World-Life project.
+distillation of the orchestrator architecture used in the masteryee-labs project.
 
 | Subdirectory | Role | Agent Harness Deploy equivalent |
 |--------------|------|---------------------|
@@ -59,10 +59,10 @@ distillation of the orchestrator architecture used in the Yee-World-Life project
 
 **Dropped** (project-specific): hardcoded session dependency graph; tool-specific dispatch mechanisms; concurrency caps and rate-limit workarounds.
 
-The Yee-World-Life orchestrator is a specific, large-scale instance (153 sessions, dual pipeline). Agent Harness Deploy is the general, portable core.
+The masteryee-labs orchestrator is a specific, large-scale instance (153 sessions, dual pipeline). Agent Harness Deploy is the general, portable core.
 
 ### Orchestrator source references
-- Yee-World-Life `Docs/Agents/` — the reference architecture (指揮官 / 故事寫 / 遊戲QA / 圖書管理員)
+- masteryee-labs `Docs/Agents/` — the reference architecture (指揮官 / 故事寫 / 遊戲QA / 圖書管理員)
 - msitarzewski/agency-agents — independent agents with distinct personalities (the "vibe" + frontmatter pattern)
 - OpenAI "Harness Engineering" / Anthropic "Harness Design" — commander-never-works and maker/checker separation
 - Karpathy / Boris Cherny — "humans steer, agents execute"; loops where the AI prompts, verifies, and records state itself

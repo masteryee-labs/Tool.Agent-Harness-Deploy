@@ -1,7 +1,7 @@
 # 04 — Orchestrator Design
 
 > The "AI prompts itself" pattern: one Commander + many focused Workers.
-> Reference: agency-agents (msitarzewski) + Yee-World-Life Docs/Agents architecture.
+> Reference: agency-agents (msitarzewski) + masteryee-labs Docs/Agents architecture.
 
 ## The core idea
 
@@ -188,6 +188,6 @@ its host tool provides.
 
 ## Source architecture
 
-The Commander + Workers pattern is a generalized distillation of the Yee-World-Life
+The Commander + Workers pattern is a generalized distillation of the masteryee-labs
 orchestrator architecture. See [`Docs/REFERENCES.md`](REFERENCES.md) §"Source architecture"
 for the full mapping table and kept/dropped comparison.

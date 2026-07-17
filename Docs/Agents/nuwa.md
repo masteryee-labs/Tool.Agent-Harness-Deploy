@@ -5,7 +5,7 @@
 > patches the gaps in a single reasoning thread by running multiple alternative reasoning
 > trees in parallel and cross-checking their conclusions.
 >
-> Origin: proven in the Yee-World-Life project as a skill that catches edge cases,
+> Origin: proven in the masteryee-labs project as a skill that catches edge cases,
 > dependency conflicts, and regression risks that a single-threaded agent misses. The
 > Agent Harness Deploy generalizes it into a tool-agnostic verification skill.
 
