@@ -36,6 +36,29 @@ The `method: "any"` setting means any passing check counts.
 
 ## Sync issues
 
+### "Old deploy polluted my global MCP config"
+
+Old versions of Agent Harness Deploy (before the scope fix) wrote to global MCP files
+even without `--global`, affecting Claude Desktop, Cline, Roo Code, and Windsurf.
+
+**Fix:** The deployer now auto-cleans this on every run (Step 0). Just update the repo
+and re-deploy:
+```bash
+git pull
+python scripts/distill.py
+```
+
+If the auto-cleanup reports "unsafe skip" (you added MCP servers after the old deploy),
+review manually:
+```bash
+python scripts/migrate.py --report    # see what needs attention
+```
+
+To force-restore from `.bak` (destructive — overwrites current with backup):
+```bash
+python scripts/migrate.py --restore
+```
+
 ### "Sync wrote to the wrong path"
 
 The registry's `config.project_entry` or `config.global_entry` is wrong for your setup.

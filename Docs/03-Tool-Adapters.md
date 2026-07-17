@@ -36,31 +36,36 @@
 
 ## Supported tools (23)
 
-| Tool | id | Entry file | Format |
-|------|----|-----------|--------|
-| Claude Code | `claude_code` | `.claude/CLAUDE.md` | markdown |
-| Antigravity (AGY) | `antigravity` | `AGENTS.md` | markdown |
-| Codex / Codex CLI | `codex` | `.codex/instructions.md` | markdown |
-| Devin / Devin CLI | `devin` | `.devin/AGENTS.md` | markdown |
-| Cursor | `cursor` | `.cursor/rules/Agent Harness Deploy.mdc` | mdc |
-| Claude Desktop | `claude_desktop` | `claude_desktop_config.json` | json |
-| OpenCode | `opencode` | `.opencode/AGENTS.md` | markdown |
-| OpenClaw | `openclaw` | `.openclaw/AGENTS.md` | markdown |
-| Hermes | `hermes` | `.hermes/AGENTS.md` | markdown |
-| ZCode | `zcode` | `.zcode/AGENTS.md` | markdown |
-| Kimi Code | `kimi_code` | `.kimi-code/AGENTS.md` | markdown |
-| AGY CLI | `agy_cli` | `AGENTS.md` (shared) | markdown |
-| Codex CLI | `codex_cli` | `.codex/instructions.md` (shared) | markdown |
-| Devin CLI | `devin_cli` | `.devin/AGENTS.md` (shared) | markdown |
-| Claude Code for VS Code | `claude_code_vscode` | `.claude/CLAUDE.md` (shared) | markdown |
-| Codex IDE Extension | `codex_vscode` | `.codex/instructions.md` (shared) | markdown |
-| GitHub Copilot | `github_copilot` | `.github/copilot-instructions.md` | markdown |
-| Gemini Code Assist | `gemini_code_assist` | `GEMINI.md` | markdown |
-| Cline | `cline` | `.clinerules/agent-harness-deploy.md` | markdown |
-| Roo Code | `roo_code` | `.roo/rules/agent-harness-deploy.md` | markdown |
-| Continue | `continue_dev` | `.continue/rules/agent-harness-deploy.md` | markdown |
-| Windsurf | `windsurf` | `.windsurf/rules/agent-harness-deploy.md` | markdown |
-| ChatGPT Desktop | `chatgpt_desktop` | `.codex/instructions.md` (shared) | markdown |
+| Tool | id | Entry file | Format | MCP scope |
+|------|----|-----------|--------|-----------|
+| Claude Code | `claude_code` | `.claude/CLAUDE.md` | markdown | project (`.mcp.json`) |
+| Antigravity (AGY) | `antigravity` | `AGENTS.md` | markdown | project (`.agents/mcp.json`) |
+| Codex / Codex CLI | `codex` | `.codex/instructions.md` | markdown | project (`.codex/config.toml`) |
+| Devin / Devin CLI | `devin` | `.devin/AGENTS.md` | markdown | project (`.devin/mcp.json`) |
+| Cursor | `cursor` | `.cursor/rules/Agent Harness Deploy.mdc` | mdc | project (`.cursor/mcp.json`) |
+| Claude Desktop | `claude_desktop` | `claude_desktop_config.json` | json | **global** (`${APPDATA}/Claude/...`) |
+| OpenCode | `opencode` | `.opencode/AGENTS.md` | markdown | project (`.opencode/opencode.json`) |
+| OpenClaw | `openclaw` | `.openclaw/AGENTS.md` | markdown | (no MCP) |
+| Hermes | `hermes` | `.hermes/AGENTS.md` | markdown | project (`.hermes/mcp.json`) |
+| ZCode | `zcode` | `.zcode/AGENTS.md` | markdown | project (`.zcode/config.json`) |
+| Kimi Code | `kimi_code` | `.kimi-code/AGENTS.md` | markdown | project (`.kimi-code/config.toml`) |
+| AGY CLI | `agy_cli` | `AGENTS.md` (shared) | markdown | project (`.agents/mcp.json`) |
+| Codex CLI | `codex_cli` | `.codex/instructions.md` (shared) | markdown | project (`.codex/config.toml`) |
+| Devin CLI | `devin_cli` | `.devin/AGENTS.md` (shared) | markdown | project (`.devin/mcp.json`) |
+| Claude Code for VS Code | `claude_code_vscode` | `.claude/CLAUDE.md` (shared) | markdown | project (`.mcp.json`) |
+| Codex IDE Extension | `codex_vscode` | `.codex/instructions.md` (shared) | markdown | project (`.codex/config.toml`) |
+| GitHub Copilot | `github_copilot` | `.github/copilot-instructions.md` | markdown | (no MCP) |
+| Gemini Code Assist | `gemini_code_assist` | `GEMINI.md` | markdown | (no MCP) |
+| Cline | `cline` | `.clinerules/agent-harness-deploy.md` | markdown | **global** (`~/.cline/...`) |
+| Roo Code | `roo_code` | `.roo/rules/agent-harness-deploy.md` | markdown | **global** (`~/.roo/...`) |
+| Continue | `continue_dev` | `.continue/rules/agent-harness-deploy.md` | markdown | (no MCP template) |
+| Windsurf | `windsurf` | `.windsurf/rules/agent-harness-deploy.md` | markdown | **global** (`~/.codeium/windsurf/...`) |
+| ChatGPT Desktop | `chatgpt_desktop` | `.codex/instructions.md` (shared) | markdown | project (`.codex/config.toml`) |
+
+> **MCP scope:** "project" = MCP file is inside the project directory, written on every
+> deploy. "**global**" = MCP file is in the user's home/AppData, only written with
+> `--global`. "(no MCP)" = tool has no MCP template or no MCP file. Settings and hooks
+> are always project-scoped for all tools.
 
 > CLI/extension/desktop variants share entry files with their parent tools.
 > Sync dedupes by target path, so the file is written once.

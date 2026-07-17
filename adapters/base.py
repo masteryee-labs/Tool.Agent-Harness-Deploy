@@ -12,6 +12,7 @@ import shutil
 import subprocess
 import sys
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -42,24 +43,33 @@ ASSET_SOURCES = {
 def expand(path: str) -> str:
     """Expand env vars (${HOME}, ${APPDATA}, ...) and ~ in a path string.
 
-    Cross-platform fallbacks for Windows-only env vars on Unix:
-    - ${APPDATA} → ${HOME}/.config (XDG-style) on macOS/Linux
-    - ${LOCALAPPDATA} → ${HOME}/.local/share on macOS/Linux
-    - ${USERPROFILE} → ${HOME} on macOS/Linux
-    This prevents paths like ${APPDATA}/Claude becoming /Claude (root) on Unix.
+    Cross-platform fallbacks:
+    - On Unix: ${APPDATA} → ~/.config, ${LOCALAPPDATA} → ~/.local/share,
+      ${USERPROFILE} → ~ (Windows-only vars mapped to XDG/home equivalents).
+    - On Windows: ${HOME} → %USERPROFILE% (Unix-only var mapped to Windows
+      equivalent). Windows does not set HOME by default, so registry paths
+      using ${HOME} (e.g. Windsurf, Cline, Roo, Continue MCP files) would
+      never expand without this fallback.
+    This prevents paths like ${APPDATA}/Claude becoming /Claude (root) on Unix,
+    and ${HOME}/.codeium/... staying as a literal ${HOME} directory on Windows.
     """
     if path is None:
         return None
-    # Platform-specific env var fallbacks (Windows vars → Unix equivalents)
+    # Platform-specific env var fallbacks
     if sys.platform != "win32":
         fallbacks = {
             "APPDATA": os.path.join(os.path.expanduser("~"), ".config"),
             "LOCALAPPDATA": os.path.join(os.path.expanduser("~"), ".local", "share"),
             "USERPROFILE": os.path.expanduser("~"),
         }
-        for var, val in fallbacks.items():
-            if var not in os.environ:
-                os.environ[var] = val
+    else:
+        # Windows: HOME is not set by default; map to USERPROFILE (os.path.expanduser("~"))
+        fallbacks = {
+            "HOME": os.path.expanduser("~"),
+        }
+    for var, val in fallbacks.items():
+        if var not in os.environ:
+            os.environ[var] = val
     # ${VAR} style
     for key, val in os.environ.items():
         path = path.replace(f"${{{key}}}", val)
@@ -71,6 +81,24 @@ def expand(path: str) -> str:
 def load_registry() -> dict:
     with open(REGISTRY_PATH, "r", encoding="utf-8") as f:
         return json.load(f)
+
+
+def _write_bak_marker(bak_path: Path) -> None:
+    """Write a sidecar marker next to a .bak file created by new AHD.
+
+    This allows migrate.py to distinguish:
+    - .bak with marker = created by new AHD's --global deploy (normal, don't restore)
+    - .bak without marker = created by old AHD's pollution (legacy, safe to restore)
+
+    The marker is a tiny JSON file named ``<bak_path>.ahd_managed``.
+    """
+    marker_path = Path(str(bak_path) + ".ahd_managed")
+    marker = {
+        "managed_by": "Agent Harness Deploy",
+        "timestamp": datetime.now().isoformat(timespec="seconds"),
+        "purpose": "MCP config backup from --global deploy (not legacy pollution)",
+    }
+    marker_path.write_text(json.dumps(marker, indent=2), encoding="utf-8")
 
 
 def get_tool_spec(tool_id: str) -> dict:
@@ -191,11 +219,14 @@ class BaseAdapter:
         # exists in the deployer repo but never reaches the user's tool.
         results.extend(self._sync_assets())
 
-        # runtime layer (hooks, settings, MCP) — project-level only.
+        # runtime layer (hooks, settings, MCP).
         # This is what makes the harness rules actually execute at the tool level.
         # The prompt layer tells the agent what to do; the runtime layer makes the
         # tool itself enforce it (guards, loggers, cleanup, permissions, MCP).
-        results.extend(self._sync_runtime())
+        # Project-scoped runtime files are always written; global-scoped files
+        # (e.g. ~/.codeium/windsurf/mcp_config.json) are only written when
+        # global_too=True, preventing cross-project pollution.
+        results.extend(self._sync_runtime(global_too=global_too))
 
         return results
 
@@ -277,7 +308,7 @@ class BaseAdapter:
         return results
 
     # --- runtime sync ----------------------------------------------------
-    def _sync_runtime(self) -> list[SyncResult]:
+    def _sync_runtime(self, *, global_too: bool = False) -> list[SyncResult]:
         """Deploy runtime layer: hooks, settings, MCP config.
 
         This is what makes the harness rules actually execute at the tool level.
@@ -288,6 +319,14 @@ class BaseAdapter:
         1. Hook scripts (Python, cross-platform) → hooks_dir
         2. Settings file (permissions + hook registration) → settings_file (merged)
         3. MCP config (server registration) → mcp_file (merged)
+
+        Scope handling:
+        - Project-relative paths (e.g. '.mcp.json', '.claude/hooks/') are always
+          written — they don't affect other projects.
+        - Global paths (e.g. '${HOME}/.codeium/windsurf/mcp_config.json') are
+          only written when ``global_too=True`` (the --global flag). Without it,
+          global-scoped runtime files are skipped to prevent cross-project
+          pollution.
 
         All merges preserve existing user config — Agent Harness Deploy only adds/updates
         its own keys. A .bak backup is created before any overwrite.
@@ -306,8 +345,9 @@ class BaseAdapter:
         if hooks_dir_rel:
             hooks_src = runtime_src / "hooks"
             if hooks_src.is_dir():
-                target = self.project_root / hooks_dir_rel
-                results.extend(self._copy_tree(hooks_src, target))
+                target = self._resolve_scoped_path(hooks_dir_rel, global_too)
+                if target is not None:
+                    results.extend(self._copy_tree(hooks_src, target))
 
         # 2. Merge settings file (permissions + hook registration)
         settings_file_rel = rt.get("settings_file")
@@ -316,8 +356,9 @@ class BaseAdapter:
         if settings_file_rel and settings_template:
             template_path = runtime_src / "settings" / settings_template
             if template_path.is_file():
-                target = self.project_root / settings_file_rel
-                results.append(self._merge_settings(target, template_path, settings_format))
+                target = self._resolve_scoped_path(settings_file_rel, global_too)
+                if target is not None:
+                    results.append(self._merge_settings(target, template_path, settings_format))
 
         # 3. Merge MCP config
         mcp_file_rel = rt.get("mcp_file")
@@ -326,8 +367,9 @@ class BaseAdapter:
         if mcp_file_rel and mcp_template:
             template_path = runtime_src / "mcp" / mcp_template
             if template_path.is_file():
-                target = self.project_root / mcp_file_rel
-                results.append(self._merge_mcp(target, template_path, mcp_format))
+                target = self._resolve_scoped_path(mcp_file_rel, global_too)
+                if target is not None:
+                    results.append(self._merge_mcp(target, template_path, mcp_format))
 
         # 4. Copy runtime helper scripts to <runtime_root>/scripts/ and seed session runtime dirs
         #    These are needed by the orchestrator prompts regardless of tool-specific hooks.
@@ -504,6 +546,30 @@ class BaseAdapter:
             return cfg_root.rstrip("/")
         return ".agents"
 
+    def _resolve_scoped_path(self, rel: str, global_too: bool) -> Optional[Path]:
+        """Resolve a runtime path from registry, respecting global/project scope.
+
+        - Project-relative paths (e.g. '.mcp.json', '.claude/settings.json') →
+          always resolved against project_root. These don't affect other projects.
+        - Global paths (e.g. '${HOME}/.codeium/windsurf/mcp_config.json',
+          '${APPDATA}/Claude/claude_desktop_config.json') → only resolved when
+          ``global_too=True``; returns ``None`` otherwise so the caller skips.
+
+        This fixes two bugs:
+        1. Env vars (${HOME}, ${APPDATA}) were never expanded for runtime paths,
+           creating literal '${HOME}' directories under the project root.
+        2. Global-scoped MCP/settings files were written even without --global,
+           polluting global config from a project-level deploy.
+        """
+        if not rel:
+            return None
+        expanded = expand(rel)
+        if os.path.isabs(expanded):
+            if not global_too:
+                return None
+            return Path(expanded)
+        return self.project_root / rel
+
     def _path_replacements(self) -> list[tuple[str, str]]:
         """Build source -> deployed path replacements for this tool.
 
@@ -603,6 +669,9 @@ class BaseAdapter:
             if target.exists():
                 backup = target.with_suffix(target.suffix + ".bak")
                 shutil.copy2(target, backup)
+                # Mark this .bak as managed by new AHD so migrate.py doesn't
+                # mistake it for legacy pollution from old AHD versions.
+                _write_bak_marker(backup)
 
             if fmt == "json":
                 existing = {}
@@ -777,61 +846,75 @@ class BaseAdapter:
             out.append((f"runtime:{d}", d.exists(), f"{label} dir present" if d.exists() else f"{label} dir missing"))
 
         # Runtime layer verification — hooks, settings, MCP
+        # Uses _resolve_scoped_path with global_too=True so that global-scoped
+        # paths (e.g. ~/.codeium/windsurf/mcp_config.json) are resolved to their
+        # real location instead of a literal ${HOME} directory under project root.
+        # Global-scoped files are only verified if they exist (they're optional —
+        # only written with --global).
         rt = self.spec.get("runtime", {})
         if rt.get("enabled"):
             # Hook scripts
             hooks_dir_rel = rt.get("hooks_dir")
             if hooks_dir_rel:
-                hooks_dir = self.project_root / hooks_dir_rel
-                for hook_name in ("pre_tool_use.py", "post_tool_use.py", "stop.py"):
-                    hook_path = hooks_dir / hook_name
-                    exists = hook_path.exists()
-                    if not exists:
-                        out.append((f"runtime:{hook_path}", False, "hook missing"))
-                        continue
-                    # Basic sanity check: post_tool_use must resolve session_id
-                    if hook_name == "post_tool_use.py":
-                        try:
-                            content = hook_path.read_text(encoding="utf-8", errors="ignore")
-                            ok = "get_session_id" in content or "session_id" in content
-                            out.append((f"runtime:{hook_path}", ok,
-                                        "hook present with session_id fallback" if ok else "hook missing session_id fallback"))
-                        except Exception as e:
-                            out.append((f"runtime:{hook_path}", False, str(e)))
-                    else:
-                        out.append((f"runtime:{hook_path}", True, "hook present"))
+                hooks_dir = self._resolve_scoped_path(hooks_dir_rel, global_too=True)
+                if hooks_dir is not None:
+                    for hook_name in ("pre_tool_use.py", "post_tool_use.py", "stop.py"):
+                        hook_path = hooks_dir / hook_name
+                        exists = hook_path.exists()
+                        if not exists:
+                            out.append((f"runtime:{hook_path}", False, "hook missing"))
+                            continue
+                        # Basic sanity check: post_tool_use must resolve session_id
+                        if hook_name == "post_tool_use.py":
+                            try:
+                                content = hook_path.read_text(encoding="utf-8", errors="ignore")
+                                ok = "get_session_id" in content or "session_id" in content
+                                out.append((f"runtime:{hook_path}", ok,
+                                            "hook present with session_id fallback" if ok else "hook missing session_id fallback"))
+                            except Exception as e:
+                                out.append((f"runtime:{hook_path}", False, str(e)))
+                        else:
+                            out.append((f"runtime:{hook_path}", True, "hook present"))
 
             # Settings file
             settings_file_rel = rt.get("settings_file")
             if settings_file_rel:
-                settings_path = self.project_root / settings_file_rel
-                exists = settings_path.exists()
-                if exists:
-                    try:
-                        content = settings_path.read_text(encoding="utf-8")
-                        # Check for Agent Harness Deploy marker or hook references
-                        ok = "agent harness deploy" in content.lower() or "pre_tool_use" in content
-                        out.append((f"runtime:{settings_path}", ok,
-                                    "settings has agent harness deploy hooks" if ok else "settings missing agent harness deploy hooks"))
-                    except Exception as e:
-                        out.append((f"runtime:{settings_path}", False, str(e)))
-                else:
-                    out.append((f"runtime:{settings_path}", False, "settings file missing"))
+                settings_path = self._resolve_scoped_path(settings_file_rel, global_too=True)
+                if settings_path is not None:
+                    exists = settings_path.exists()
+                    if exists:
+                        try:
+                            content = settings_path.read_text(encoding="utf-8")
+                            # Check for Agent Harness Deploy marker or hook references
+                            ok = "agent harness deploy" in content.lower() or "pre_tool_use" in content
+                            out.append((f"runtime:{settings_path}", ok,
+                                        "settings has agent harness deploy hooks" if ok else "settings missing agent harness deploy hooks"))
+                        except Exception as e:
+                            out.append((f"runtime:{settings_path}", False, str(e)))
+                    else:
+                        out.append((f"runtime:{settings_path}", False, "settings file missing"))
 
             # MCP config
             mcp_file_rel = rt.get("mcp_file")
             if mcp_file_rel:
-                mcp_path = self.project_root / mcp_file_rel
-                exists = mcp_path.exists()
-                if exists:
-                    try:
-                        content = mcp_path.read_text(encoding="utf-8")
-                        ok = "mcpServers" in content or "mcp_servers" in content
-                        out.append((f"runtime:{mcp_path}", ok,
-                                    "mcp config present" if ok else "mcp config malformed"))
-                    except Exception as e:
-                        out.append((f"runtime:{mcp_path}", False, str(e)))
-                else:
-                    out.append((f"runtime:{mcp_path}", False, "mcp file missing"))
+                mcp_path = self._resolve_scoped_path(mcp_file_rel, global_too=True)
+                if mcp_path is not None:
+                    exists = mcp_path.exists()
+                    if exists:
+                        try:
+                            content = mcp_path.read_text(encoding="utf-8")
+                            ok = "mcpServers" in content or "mcp_servers" in content
+                            out.append((f"runtime:{mcp_path}", ok,
+                                        "mcp config present" if ok else "mcp config malformed"))
+                        except Exception as e:
+                            out.append((f"runtime:{mcp_path}", False, str(e)))
+                    else:
+                        # Global-scoped MCP files are optional (only written with --global).
+                        # Don't fail verification for missing global MCP — just skip.
+                        expanded = expand(mcp_file_rel)
+                        if os.path.isabs(expanded):
+                            out.append((f"runtime:{mcp_path}", True, "global MCP not written (use --global to deploy)"))
+                        else:
+                            out.append((f"runtime:{mcp_path}", False, "mcp file missing"))
 
         return out

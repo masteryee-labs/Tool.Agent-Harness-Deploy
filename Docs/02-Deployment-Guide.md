@@ -45,12 +45,19 @@ When the AI receives that instruction, it MUST:
 
 ```
 distill.py
+  → migrate.py   → scans global MCP files for legacy pollution, safe-restores from .bak
   → detect.py    → reads registry.json, runs checks per tool
   → sync.py      → builds canonical body from distill/canon/, writes to detected tools
   → verify.py    → read-backs every written file, checks marker present
 ```
 
+- **Step 0 (legacy cleanup):** scans 4 global MCP locations for `.bak` files from old
+  deploys. Safe-restores if no user changes since. Skips + warns if user changed MCP
+  servers. See "Legacy cleanup" below.
 - Only **detected** tools get synced. Undetected tools are skipped (not fabricated).
+- **Project-scoped** configs (`.mcp.json`, `.claude/settings.json`, hooks) are always
+  written. **Global-scoped** configs (`~/.codeium/windsurf/mcp_config.json`, etc.) are
+  only written with `--global`. This prevents cross-project pollution.
 - Existing configs are backed up to `.bak` before overwrite.
 - Dedupes by target path (AGY CLI + Antigravity — one `AGENTS.md` write).
 
@@ -122,10 +129,50 @@ PASS/FAIL per file.
 
 | Flag | Effect |
 |------|--------|
-| `--global` | Also write global entry files (`~/.claude/CLAUDE.md`, `~/.codex/instructions.md`, `~/.gemini/AGENTS.md`, `~/.config/devin/AGENTS.md`). The harness then applies to *all* your projects, not just this repo. |
+| `--global` | Also write global entry files (`~/.claude/CLAUDE.md`, `~/.codex/instructions.md`, `~/.gemini/AGENTS.md`, `~/.config/devin/AGENTS.md`) **and** global MCP files (`~/.codeium/windsurf/mcp_config.json`, `~/.cline/...`, `~/.roo/...`). The harness then applies to *all* your projects, not just this repo. Without this flag, only project-level configs are written — different projects are fully isolated. |
 | `--tools X,Y` | Sync only listed tool ids. Example: `--tools claude_code,codex`. |
 | `--dry-run` | Detect + report only. No writes. Safe for inspection. |
+| `--no-migrate` | Skip Step 0 (legacy global MCP cleanup). Use if you want to skip the auto-cleanup. |
 | `--canon` | Regenerate the repo's own `AGENTS.md` canon body from `distill/canon/`. Use after editing canon. |
+
+## Project vs global scope
+
+The deployer separates **project-scoped** and **global-scoped** runtime configs:
+
+| Config type | Project-scoped (always written) | Global-scoped (--global only) |
+|-------------|--------------------------------|-------------------------------|
+| Entry file | `.claude/CLAUDE.md`, `.codex/instructions.md`, etc. | `~/.claude/CLAUDE.md`, `~/.codex/instructions.md`, etc. |
+| MCP | `.mcp.json`, `.cursor/mcp.json`, `.devin/mcp.json`, etc. | `~/.codeium/windsurf/mcp_config.json`, `~/.cline/...`, `~/.roo/...`, `${APPDATA}/Claude/...` |
+| Settings | `.claude/settings.json`, `.codex/config.toml`, etc. | (none — settings are always project-scoped) |
+| Hooks | `.claude/hooks/`, `.codex/hooks/`, etc. | (none — hooks are always project-scoped) |
+
+**Settings and hooks are always project-scoped** — they contain permissions and hook
+scripts that reference project-relative paths. Global settings would be dangerous
+(e.g., globally allowing `git push --force`).
+
+**MCP is mixed**: most tools have per-project MCP (Claude Code, Codex, Cursor, Devin,
+etc.), but 4 tools only have a global MCP file (Claude Desktop, Cline, Roo Code,
+Windsurf). For those 4, global MCP is only written with `--global`.
+
+## Legacy cleanup
+
+Old versions of Agent Harness Deploy (before the scope fix) wrote to global MCP files
+even without `--global`, polluting configs for Claude Desktop, Cline, Roo Code, and
+Windsurf. The deployer now auto-cleans this on every run (Step 0):
+
+1. **Scans** the 4 global MCP locations for `.bak` files from old deploys.
+2. **Safe-restores** from `.bak` if the current file's `mcpServers` matches the `.bak`
+   (after stripping `_`-prefixed keys, which old AHD removed) — meaning no user changes
+   were made since the old deploy.
+3. **Skips + warns** if you added/removed MCP servers after the old deploy. The `.bak`
+   is kept for manual review.
+
+Standalone usage:
+```bash
+python scripts/migrate.py --report    # check only, no writes
+python scripts/migrate.py             # auto-restore where safe
+python scripts/migrate.py --restore   # force-restore from .bak (destructive)
+```
 
 ## Re-deploying after canon changes
 

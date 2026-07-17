@@ -33,6 +33,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from scripts.detect import detect_all  # noqa: E402
+from scripts.migrate import run_migration  # noqa: E402
 from scripts.sync import sync_all  # noqa: E402
 from scripts.verify import verify_all  # noqa: E402
 
@@ -45,6 +46,8 @@ def main() -> int:
                     help="also sync global entry files")
     ap.add_argument("--tools", default=None, help="comma-separated tool ids to sync")
     ap.add_argument("--dry-run", action="store_true", help="detect only, no writes")
+    ap.add_argument("--no-migrate", action="store_true",
+                    help="skip legacy global MCP cleanup (Step 0)")
     ap.add_argument("--project-root", default=".")
     args = ap.parse_args()
 
@@ -53,8 +56,19 @@ def main() -> int:
     print("└───────────────────────────────────────────────────┘")
     print()
 
+    # Step 0: Legacy cleanup — clean up global MCP files polluted by old AHD versions.
+    # Old versions wrote to global MCP even without --global. This auto-restores
+    # from .bak where safe, so updating the repo + re-deploying fixes old pollution.
+    if not args.no_migrate:
+        print("→ Step 0/4: Legacy global MCP cleanup...")
+        run_migration(report_only=args.dry_run)
+        print()
+    else:
+        print("→ Step 0/4: Skipped (--no-migrate)")
+        print()
+
     # Step 1: Detect
-    print("→ Step 1/3: Detecting installed AI tools...")
+    print("→ Step 1/4: Detecting installed AI tools...")
     det = detect_all(args.project_root)
     detected = [r for r in det if r["detected"]]
     print(f"  Found {len(detected)}/{len(det)} tools:")
@@ -71,7 +85,7 @@ def main() -> int:
         return 0
 
     # Step 2: Sync (serialized against other distill/sync runs)
-    print("→ Step 2/3: Generating canonical body & syncing to detected tools...")
+    print("→ Step 2/4: Generating canonical body & syncing to detected tools...")
     only = args.tools.split(",") if args.tools else None
     deploy_lock = None
     if FileLock:
@@ -88,7 +102,7 @@ def main() -> int:
         print()
 
         # Step 3: Verify
-        print("→ Step 3/3: Verifying written files (read-back)...")
+        print("→ Step 3/4: Verifying written files (read-back)...")
         v = verify_all(args.project_root)
         for r in v["checks"]:
             mark = "PASS" if r["ok"] else "FAIL"

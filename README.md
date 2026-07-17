@@ -160,7 +160,7 @@ Tool.Agent-Harness-Deploy/
 ├── Docs/                      # Documentation
 ├── distill/                   # canon/ · orchestrator/ · skills/
 ├── adapters/                  # Tool adapters + registry.json
-├── scripts/                   # detect, distill, sync, verify, deploy, worktree, plan_dispatch
+├── scripts/                   # detect, distill, sync, verify, migrate, deploy, worktree, plan_dispatch
 └── .agents/                    # The deployer's own harness (dogfooded)
 ```
 
@@ -170,11 +170,53 @@ See [`Docs/00-Overview.md`](Docs/00-Overview.md) for detailed directory descript
 
 ```bash
 python scripts/detect.py            # see which tools are installed
-python scripts/distill.py           # full deploy: detect → sync → verify
-python scripts/distill.py --global  # also sync global entry files
+python scripts/distill.py           # full deploy: migrate → detect → sync → verify
+python scripts/distill.py --global  # also sync global entry files + global MCP
 python scripts/distill.py --dry-run # detect only, no writes
+python scripts/migrate.py --report  # check for legacy global MCP pollution
 python scripts/verify.py            # re-verify after a sync
 python scripts/sync.py --canon      # regenerate AGENTS.md after editing canon
+```
+
+## Project vs global scope
+
+The deployer distinguishes **project-scoped** and **global-scoped** config:
+
+| Scope | What gets written | When |
+|-------|-------------------|------|
+| **Project** (`.mcp.json`, `.claude/settings.json`, `.claude/hooks/`, etc.) | Entry files, skills, hooks, settings, MCP | Always — `distill.py` without any flag |
+| **Global** (`~/.claude/CLAUDE.md`, `~/.codeium/windsurf/mcp_config.json`, etc.) | Global entry files + global MCP | Only with `--global` flag |
+
+**Without `--global`:** only project-level configs are written. Different projects don't pollute each other. This is the default.
+
+**With `--global`:** project + global configs are both written. AI tools read both — global provides shared base rules, project extends/overrides. This is the standard "shared base + per-project override" pattern.
+
+### Which tools have global-only MCP?
+
+Some tools only have a single global MCP file (no per-project MCP):
+
+| Tool | Global MCP file | Written when |
+|------|-----------------|--------------|
+| Claude Desktop | `${APPDATA}/Claude/claude_desktop_config.json` | `--global` only |
+| Cline | `~/.cline/data/settings/cline_mcp_settings.json` | `--global` only |
+| Roo Code | `~/.roo/data/settings/roo_mcp_settings.json` | `--global` only |
+| Windsurf | `~/.codeium/windsurf/mcp_config.json` | `--global` only |
+
+All other tools (Claude Code, Codex, Cursor, Devin, etc.) have per-project MCP and are written at project level by default.
+
+### Legacy cleanup (for existing deployments)
+
+If you deployed an **old version** of Agent Harness Deploy (before the scope fix), it may have written to the global MCP files above even without `--global`. Running `python scripts/distill.py` now automatically:
+
+1. Scans the 4 global MCP locations for `.bak` backups from old deploys.
+2. **Safe-restores** from `.bak` if no user changes were made since the old deploy.
+3. **Skips and warns** if you added/removed MCP servers after the old deploy (manual review needed).
+
+You can also run cleanup standalone:
+```bash
+python scripts/migrate.py --report    # check only, no writes
+python scripts/migrate.py             # auto-restore where safe
+python scripts/migrate.py --restore   # force-restore from .bak (destructive)
 ```
 
 ## How it works (30-second version)
@@ -209,6 +251,14 @@ Tell any AI coding assistant: `deploy: https://github.com/masteryee-labs/Tool.Ag
 <summary><strong>Does it write configs for tools I don't have installed?</strong></summary>
 
 No. Detection is sacred — only tools actually installed on your machine get deployed. If a tool is not detected, it is reported as "not detected" and skipped. Zero unnecessary footprint.
+</details>
+
+<details>
+<summary><strong>Will it overwrite my global config or other projects' settings?</strong></summary>
+
+No — not by default. Without `--global`, the deployer only writes project-level configs (`.mcp.json`, `.claude/settings.json`, etc.) inside the current project directory. Global configs (`~/.claude/CLAUDE.md`, `~/.codeium/windsurf/mcp_config.json`, etc.) are only touched when you explicitly pass `--global`. Different projects are fully isolated.
+
+If you deployed an **old version** that polluted global MCP files, running `python scripts/distill.py` (or `python scripts/migrate.py`) will automatically detect and safely restore from `.bak` backups. See "Legacy cleanup" above.
 </details>
 
 <details>
