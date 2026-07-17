@@ -142,12 +142,12 @@ The concepts in this harness synthesize ideas from many sources. Key ones:
 | 80-word instruction experiment | 控制平面大課題 |
 | Control-plane pattern | Ryan Carson, Wisely Chen 見解 |
 | CLAUDE.md discipline | Karpathy's CLAUDE.md, Boris Cherny |
-| Cross-tool entry sync | masteryee-labs `.agents/scripts/sync_cross_tool_entries.py` pattern |
+| Cross-tool entry sync | AHD `scripts/sync.py` + `scripts/distill.py` pattern |
 | Skills format | Codex/Claude Code SKILL.md convention, obra/superpowers ("Use when..." pattern) |
 | Meta-skill enforcement | obra/superpowers `using-superpowers` pattern |
 | Worker frontmatter (color/emoji/services) | msitarzewski/agency-agents |
 | Judgment externalization | Fable 5 skills discipline (Iwo's Rigor Pack, kpab's Fable-5-native skills) |
-| Sub-agent templates | masteryee-labs `AI_Subagent_Templates.md` v7.6 |
+| Sub-agent templates | masteryee-labs dispatch protocol + agency-agents vibe pattern |
 
 > These sources inspired the design. Agent Harness Deploy is an independent implementation; it does not
 > copy their code. Each concept is adapted and cited where relevant in the Docs.
